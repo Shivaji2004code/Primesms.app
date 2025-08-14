@@ -356,23 +356,34 @@ async function verifyMetaSignature(req: Request, ubi?: UserBusinessInfo): Promis
     console.log('🔍 [WEBHOOK] DEBUG: No user business info found, will try global app secret only');
   }
   
-  // Fallback to global app secret (for backward compatibility)
-  const globalAppSecret = env('META_APP_SECRET', false);
-  if (globalAppSecret) {
-    console.log(`🔍 [WEBHOOK] DEBUG: Trying global app secret (length: ${globalAppSecret.length})`);
-    const expected = 'sha256=' + crypto.createHmac('sha256', globalAppSecret).update(req.rawBody).digest('hex');
-    const isValid = constantTimeEqual(hdr, expected);
+  // Fallback to global app secrets (support multiple WhatsApp apps)
+  const globalAppSecrets = [
+    env('META_APP_SECRET', false),
+    env('META_APP_SECRET_2', false)
+  ].filter(Boolean); // Remove null/empty values
+  
+  if (globalAppSecrets.length > 0) {
+    console.log(`🔍 [WEBHOOK] DEBUG: Trying ${globalAppSecrets.length} global app secret(s)`);
     
-    console.log(`🔍 [WEBHOOK] DEBUG: Global signature - Expected: ${expected.substring(0, 20)}..., Received: ${hdr.substring(0, 20)}...`);
-    
-    if (isValid) {
-      console.log('✅ [WEBHOOK] Signature verification passed with global app secret');
-      return true;
-    } else {
-      console.log('❌ [WEBHOOK] Signature verification failed with global app secret');
+    for (let i = 0; i < globalAppSecrets.length; i++) {
+      const secret = globalAppSecrets[i];
+      const secretLabel = i === 0 ? 'META_APP_SECRET' : `META_APP_SECRET_${i + 1}`;
+      
+      console.log(`🔍 [WEBHOOK] DEBUG: Trying ${secretLabel} (length: ${secret.length})`);
+      const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(req.rawBody).digest('hex');
+      const isValid = constantTimeEqual(hdr, expected);
+      
+      console.log(`🔍 [WEBHOOK] DEBUG: ${secretLabel} signature - Expected: ${expected.substring(0, 20)}..., Received: ${hdr.substring(0, 20)}...`);
+      
+      if (isValid) {
+        console.log(`✅ [WEBHOOK] Signature verification passed with ${secretLabel}`);
+        return true;
+      } else {
+        console.log(`❌ [WEBHOOK] Signature verification failed with ${secretLabel}`);
+      }
     }
   } else {
-    console.log('⚠️ [WEBHOOK] No global META_APP_SECRET environment variable found');
+    console.log('⚠️ [WEBHOOK] No global app secret environment variables found (META_APP_SECRET, META_APP_SECRET_2)');
   }
   
   console.log('❌ [WEBHOOK] Signature verification failed - no valid app secret found');

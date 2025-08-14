@@ -42,9 +42,10 @@ function testWebhookSignature() {
   const payload = JSON.stringify(samplePayload);
   console.log('📦 Sample payload:', payload.substring(0, 100) + '...\n');
 
-  // Test with different app secrets
+  // Test with different app secrets (including multiple app support)
   const testSecrets = [
     process.env.META_APP_SECRET,
+    process.env.META_APP_SECRET_2,
     'your_test_secret_here', // Replace with your actual app secret
     'wrong_secret'
   ];

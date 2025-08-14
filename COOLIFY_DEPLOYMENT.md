@@ -60,7 +60,11 @@ SESSION_SECRET=your_session_secret_minimum_32_characters
 META_ACCESS_TOKEN=your_meta_access_token
 META_PHONE_NUMBER_ID=your_phone_number_id
 META_VERIFY_TOKEN=your_webhook_verify_token
-META_APP_SECRET=your_app_secret
+
+# App Secrets (Multiple WhatsApp Apps Support)
+META_APP_SECRET=your_first_whatsapp_app_secret
+META_APP_SECRET_2=your_second_whatsapp_app_secret
+
 GRAPH_API_VERSION=v22.0
 
 # Webhook Debug
