@@ -360,7 +360,7 @@ router.get('/users/:id/details', async (req, res) => {
     const businessResult = await pool.query(
       `SELECT id, user_id, business_name, whatsapp_number, whatsapp_number_id, 
        waba_id, access_token, webhook_url, webhook_verify_token, is_active, 
-       app_id, created_at, updated_at 
+       app_id, app_secret, created_at, updated_at 
        FROM user_business_info WHERE user_id = $1`,
       [id]
     );
@@ -390,6 +390,7 @@ router.get('/users/:id/details', async (req, res) => {
         accessToken: business.access_token,
         webhookUrl: business.webhook_url,
         webhookVerifyToken: business.webhook_verify_token,
+        appSecret: business.app_secret,
         isActive: business.is_active,
         createdAt: business.created_at,
         updatedAt: business.updated_at,
@@ -417,6 +418,7 @@ router.get('/users/:id/details', async (req, res) => {
         accessToken: userWithBusiness.businessInfo.accessToken,
         webhookUrl: userWithBusiness.businessInfo.webhookUrl,
         webhookVerifyToken: userWithBusiness.businessInfo.webhookVerifyToken,
+        appSecret: userWithBusiness.businessInfo.appSecret,
         isActive: userWithBusiness.businessInfo.isActive,
         createdAt: userWithBusiness.businessInfo.createdAt,
         updatedAt: userWithBusiness.businessInfo.updatedAt,
