@@ -136,6 +136,7 @@ async function processStatusUpdates(ubi, statuses) {
             if (statusValue && id) {
                 let updateQuery = '';
                 let timestampValue = new Date(parseInt(timestamp) * 1000);
+                let errorMessage = '';
                 if (statusValue === 'sent') {
                     updateQuery = `
             UPDATE campaign_logs 
@@ -155,7 +156,20 @@ async function processStatusUpdates(ubi, statuses) {
             WHERE user_id = $3 AND message_id = $4`;
                 }
                 else if (statusValue === 'failed') {
-                    const errorMessage = status.errors?.[0]?.title || status.error?.message || 'Delivery failed';
+                    errorMessage = 'Delivery failed';
+                    if (status.errors && Array.isArray(status.errors) && status.errors.length > 0) {
+                        const error = status.errors[0];
+                        const code = error.code || 'Unknown';
+                        const title = error.title || 'Unknown Error';
+                        const details = error.details || '';
+                        errorMessage = `${code}: ${title}${details ? ' - ' + details : ''}`;
+                    }
+                    else if (status.error) {
+                        const code = status.error.code || 'Unknown';
+                        const message = status.error.message || status.error.title || 'Unknown Error';
+                        errorMessage = `${code}: ${message}`;
+                    }
+                    console.log(`❌ [WEBHOOK] Message ${id} failed with error: ${errorMessage}`);
                     updateQuery = `
             UPDATE campaign_logs 
             SET status = 'failed', error_message = $5, updated_at = CURRENT_TIMESTAMP
@@ -163,7 +177,7 @@ async function processStatusUpdates(ubi, statuses) {
                 }
                 if (updateQuery) {
                     const params = statusValue === 'failed'
-                        ? [statusValue, timestampValue, ubi.userId, id, status.errors?.[0]?.title || 'Delivery failed']
+                        ? [statusValue, timestampValue, ubi.userId, id, errorMessage]
                         : [statusValue, timestampValue, ubi.userId, id];
                     const updateResult = await client.query(updateQuery, params);
                     if (updateResult.rowCount && updateResult.rowCount > 0) {
@@ -171,7 +185,20 @@ async function processStatusUpdates(ubi, statuses) {
                     }
                     else {
                         console.log(`⚠️  [WEBHOOK] No campaign found for message ID: ${id} user ${ubi.userId}`);
-                        if (statusValue !== 'failed') {
+                        if (statusValue === 'failed') {
+                            await client.query(`
+                INSERT INTO campaign_logs (
+                  user_id, message_id, recipient_number, status, campaign_name, 
+                  template_used, error_message, created_at, updated_at
+                ) VALUES ($1, $2, $3, $4, 'webhook_only', 'unknown', $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id, message_id) DO UPDATE SET
+                  status = $4,
+                  error_message = $5,
+                  updated_at = CURRENT_TIMESTAMP
+              `, [ubi.userId, id, recipient_id, statusValue, errorMessage]);
+                            console.log(`🔄 [WEBHOOK] Created failed campaign entry from webhook: ${id} - ${errorMessage}`);
+                        }
+                        else {
                             await client.query(`
                 INSERT INTO campaign_logs (
                   user_id, message_id, recipient_number, status, campaign_name, 
@@ -187,7 +214,7 @@ async function processStatusUpdates(ubi, statuses) {
                   ${statusValue === 'delivered' ? 'delivered_at = COALESCE(campaign_logs.delivered_at, $5),' : ''}
                   ${statusValue === 'read' ? 'read_at = COALESCE(campaign_logs.read_at, $5),' : ''}
                   updated_at = CURRENT_TIMESTAMP
-              `, [ubi.userId, id, recipient_id, statusValue, timestampValue]);
+                `, [ubi.userId, id, recipient_id, statusValue, timestampValue]);
                             console.log(`🔄 [WEBHOOK] Created campaign entry from webhook: ${id}`);
                         }
                     }
