@@ -226,13 +226,13 @@ async function processStatusUpdates(ubi: UserBusinessInfo, statuses: any[]): Pro
           
           updateQuery = `
             UPDATE campaign_logs 
-            SET status = 'failed', error_message = $5, updated_at = CURRENT_TIMESTAMP
+            SET status = $1, error_message = $2, updated_at = CURRENT_TIMESTAMP
             WHERE user_id = $3 AND message_id = $4`;
         }
         
         if (updateQuery) {
           const params = statusValue === 'failed' 
-            ? [statusValue, timestampValue, ubi.userId, id, errorMessage]
+            ? [statusValue, errorMessage, ubi.userId, id]
             : [statusValue, timestampValue, ubi.userId, id];
             
           const updateResult = await client.query(updateQuery, params);
