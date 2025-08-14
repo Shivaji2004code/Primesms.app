@@ -68,6 +68,43 @@ async function lookupByPhoneNumberId(phoneNumberId) {
         client.release();
     }
 }
+async function lookupByTemplateName(templateName) {
+    const client = await db_1.default.connect();
+    try {
+        const templateResult = await client.query('SELECT user_id FROM templates WHERE name = $1 AND status = $2 LIMIT 1', [templateName, 'PENDING']);
+        if (templateResult.rows.length === 0) {
+            console.log(`🔍 [WEBHOOK] No pending template found with name: ${templateName}`);
+            return null;
+        }
+        const userId = templateResult.rows[0].user_id;
+        console.log(`🔍 [WEBHOOK] Found template ${templateName} belongs to user ${userId}`);
+        const businessResult = await client.query('SELECT * FROM user_business_info WHERE user_id = $1 AND is_active = true LIMIT 1', [userId]);
+        if (businessResult.rows.length === 0) {
+            console.log(`🔍 [WEBHOOK] No active business info found for user ${userId}`);
+            return null;
+        }
+        const row = businessResult.rows[0];
+        return {
+            id: row.id,
+            userId: row.user_id,
+            businessName: row.business_name,
+            whatsappNumber: row.whatsapp_number,
+            whatsappNumberId: row.whatsapp_number_id,
+            wabaId: row.waba_id,
+            accessToken: row.access_token,
+            webhookUrl: row.webhook_url,
+            webhookVerifyToken: row.webhook_verify_token,
+            isActive: row.is_active,
+            appId: row.app_id,
+            appSecret: row.app_secret,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
+        };
+    }
+    finally {
+        client.release();
+    }
+}
 async function processIncomingMessages(ubi, messages) {
     try {
         console.log(`📥 [WEBHOOK] Processing ${messages.length} incoming message(s) for user ${ubi.userId}`);
@@ -238,6 +275,9 @@ async function verifyMetaSignature(req, ubi) {
     else if (ubi) {
         console.log(`⚠️ [WEBHOOK] User ${ubi.userId} found but no app secret configured`);
     }
+    else {
+        console.log('🔍 [WEBHOOK] DEBUG: No user business info found, will try global app secret only');
+    }
     const globalAppSecret = env('META_APP_SECRET', false);
     if (globalAppSecret) {
         console.log(`🔍 [WEBHOOK] DEBUG: Trying global app secret (length: ${globalAppSecret.length})`);
@@ -280,7 +320,9 @@ function summarize(body) {
             return `field=${field} pni=${pni} status id=${s.id} status=${s.status} ts=${s.timestamp}`;
         }
         if (val?.message_template_id || field === 'message_template_status_update') {
-            return `field=${field} template update`;
+            const templateName = val?.message_template_name || 'unknown';
+            const event = val?.event || 'unknown';
+            return `field=${field} template=${templateName} event=${event}`;
         }
         return `field=${field} (unparsed)`;
     }
@@ -319,18 +361,41 @@ metaWebhookRouter.post('/meta', async (req, res) => {
     try {
         console.log('📩 [WEBHOOK] POST /meta - Received webhook event');
         const body = req.body;
-        const pni = body?.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
+        const change = body?.entry?.[0]?.changes?.[0];
+        const field = change?.field;
+        const value = change?.value;
+        const pni = value?.metadata?.phone_number_id;
+        const templateName = value?.message_template_name;
         let ubi;
-        console.log('🔍 [WEBHOOK] DEBUG: Extracted phone_number_id from webhook:', pni || 'NOT FOUND');
-        console.log('🔍 [WEBHOOK] DEBUG: Webhook payload structure:', JSON.stringify({
-            entry: body?.entry ? `Array(${body.entry.length})` : 'missing',
-            changes: body?.entry?.[0]?.changes ? `Array(${body.entry[0].changes.length})` : 'missing',
-            value: body?.entry?.[0]?.changes?.[0]?.value ? 'present' : 'missing',
-            metadata: body?.entry?.[0]?.changes?.[0]?.value?.metadata ? 'present' : 'missing'
+        console.log('🔍 [WEBHOOK] DEBUG: Webhook details:', JSON.stringify({
+            field: field || 'missing',
+            phone_number_id: pni || 'NOT FOUND',
+            template_name: templateName || 'NOT FOUND',
+            payload_structure: {
+                entry: body?.entry ? `Array(${body.entry.length})` : 'missing',
+                changes: body?.entry?.[0]?.changes ? `Array(${body.entry[0].changes.length})` : 'missing',
+                value: body?.entry?.[0]?.changes?.[0]?.value ? 'present' : 'missing',
+                metadata: body?.entry?.[0]?.changes?.[0]?.value?.metadata ? 'present' : 'missing'
+            }
         }));
-        if (pni) {
+        if (field === 'message_template_status_update' && templateName) {
             try {
-                console.log(`🔍 [WEBHOOK] DEBUG: Looking up phone_number_id: ${pni} in database`);
+                console.log(`🔍 [WEBHOOK] DEBUG: Template webhook - looking up template: ${templateName}`);
+                ubi = await lookupByTemplateName(templateName) ?? undefined;
+                if (ubi) {
+                    console.log(`📋 [WEBHOOK] Mapped template ${templateName} to user ${ubi.userId} (app_secret: ${ubi.appSecret ? 'PRESENT' : 'MISSING'})`);
+                }
+                else {
+                    console.log(`⚠️  [WEBHOOK] Could not map template ${templateName} to any user - check templates table`);
+                }
+            }
+            catch (e) {
+                console.error(`❌ [WEBHOOK] Error looking up template ${templateName}:`, e);
+            }
+        }
+        else if (pni) {
+            try {
+                console.log(`🔍 [WEBHOOK] DEBUG: Message webhook - looking up phone_number_id: ${pni}`);
                 ubi = await lookupByPhoneNumberId(pni) ?? undefined;
                 if (ubi) {
                     console.log(`📱 [WEBHOOK] Mapped phone_number_id ${pni} to user ${ubi.userId} (app_secret: ${ubi.appSecret ? 'PRESENT' : 'MISSING'})`);
@@ -344,7 +409,7 @@ metaWebhookRouter.post('/meta', async (req, res) => {
             }
         }
         else {
-            console.log('⚠️  [WEBHOOK] No phone_number_id found in webhook payload - cannot lookup user business info');
+            console.log('⚠️  [WEBHOOK] No phone_number_id or template_name found in webhook payload - cannot lookup user business info');
         }
         if (!(await verifyMetaSignature(req, ubi))) {
             console.log('❌ [WEBHOOK] Signature verification failed');
