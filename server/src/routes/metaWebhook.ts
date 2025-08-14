@@ -271,20 +271,28 @@ async function verifyMetaSignature(req: Request, ubi?: UserBusinessInfo): Promis
   
   const hdr = req.header('x-hub-signature-256') || req.header('X-Hub-Signature-256');
   
+  console.log('🔍 [WEBHOOK] DEBUG: Signature header received:', hdr ? `${hdr.substring(0, 20)}...` : 'MISSING');
+  console.log('🔍 [WEBHOOK] DEBUG: Raw body length:', req.rawBody ? req.rawBody.length : 'NO RAW BODY');
+  console.log('🔍 [WEBHOOK] DEBUG: User business info available:', ubi ? `userId=${ubi.userId}, hasAppSecret=${!!ubi.appSecret}` : 'NO UBI');
+  
   if (!hdr || !hdr.startsWith('sha256=')) {
-    console.log('❌ [WEBHOOK] Missing or invalid signature header');
+    console.log('❌ [WEBHOOK] Missing or invalid signature header:', hdr);
     return false;
   }
   
   if (!req.rawBody) {
     console.log('❌ [WEBHOOK] No raw body available for signature verification');
+    console.log('🔍 [WEBHOOK] DEBUG: Request body type:', typeof req.body, 'length:', JSON.stringify(req.body).length);
     return false;
   }
   
   // Try user's app secret first if we have user business info
   if (ubi && ubi.appSecret) {
+    console.log(`🔍 [WEBHOOK] DEBUG: Trying user ${ubi.userId} app secret (length: ${ubi.appSecret.length})`);
     const expected = 'sha256=' + crypto.createHmac('sha256', ubi.appSecret).update(req.rawBody).digest('hex');
     const isValid = constantTimeEqual(hdr, expected);
+    
+    console.log(`🔍 [WEBHOOK] DEBUG: User signature - Expected: ${expected.substring(0, 20)}..., Received: ${hdr.substring(0, 20)}...`);
     
     if (isValid) {
       console.log(`✅ [WEBHOOK] Signature verification passed for user ${ubi.userId}`);
@@ -292,13 +300,18 @@ async function verifyMetaSignature(req: Request, ubi?: UserBusinessInfo): Promis
     } else {
       console.log(`❌ [WEBHOOK] Signature verification failed for user ${ubi.userId} with their app secret`);
     }
+  } else if (ubi) {
+    console.log(`⚠️ [WEBHOOK] User ${ubi.userId} found but no app secret configured`);
   }
   
   // Fallback to global app secret (for backward compatibility)
   const globalAppSecret = env('META_APP_SECRET', false);
   if (globalAppSecret) {
+    console.log(`🔍 [WEBHOOK] DEBUG: Trying global app secret (length: ${globalAppSecret.length})`);
     const expected = 'sha256=' + crypto.createHmac('sha256', globalAppSecret).update(req.rawBody).digest('hex');
     const isValid = constantTimeEqual(hdr, expected);
+    
+    console.log(`🔍 [WEBHOOK] DEBUG: Global signature - Expected: ${expected.substring(0, 20)}..., Received: ${hdr.substring(0, 20)}...`);
     
     if (isValid) {
       console.log('✅ [WEBHOOK] Signature verification passed with global app secret');
@@ -306,6 +319,8 @@ async function verifyMetaSignature(req: Request, ubi?: UserBusinessInfo): Promis
     } else {
       console.log('❌ [WEBHOOK] Signature verification failed with global app secret');
     }
+  } else {
+    console.log('⚠️ [WEBHOOK] No global META_APP_SECRET environment variable found');
   }
   
   console.log('❌ [WEBHOOK] Signature verification failed - no valid app secret found');
@@ -390,17 +405,28 @@ metaWebhookRouter.post('/meta', async (req, res) => {
     const pni = body?.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id as string | undefined;
     let ubi: UserBusinessInfo | undefined;
     
+    console.log('🔍 [WEBHOOK] DEBUG: Extracted phone_number_id from webhook:', pni || 'NOT FOUND');
+    console.log('🔍 [WEBHOOK] DEBUG: Webhook payload structure:', JSON.stringify({
+      entry: body?.entry ? `Array(${body.entry.length})` : 'missing',
+      changes: body?.entry?.[0]?.changes ? `Array(${body.entry[0].changes.length})` : 'missing',
+      value: body?.entry?.[0]?.changes?.[0]?.value ? 'present' : 'missing',
+      metadata: body?.entry?.[0]?.changes?.[0]?.value?.metadata ? 'present' : 'missing'
+    }));
+    
     if (pni) {
       try {
+        console.log(`🔍 [WEBHOOK] DEBUG: Looking up phone_number_id: ${pni} in database`);
         ubi = await lookupByPhoneNumberId(pni) ?? undefined;
         if (ubi) {
-          console.log(`📱 [WEBHOOK] Mapped phone_number_id ${pni} to user ${ubi.userId}`);
+          console.log(`📱 [WEBHOOK] Mapped phone_number_id ${pni} to user ${ubi.userId} (app_secret: ${ubi.appSecret ? 'PRESENT' : 'MISSING'})`);
         } else {
-          console.log(`⚠️  [WEBHOOK] Could not map phone_number_id ${pni} to any user`);
+          console.log(`⚠️  [WEBHOOK] Could not map phone_number_id ${pni} to any user - check user_business_info table`);
         }
       } catch (e) {
         console.error(`❌ [WEBHOOK] Error looking up phone_number_id ${pni}:`, e);
       }
+    } else {
+      console.log('⚠️  [WEBHOOK] No phone_number_id found in webhook payload - cannot lookup user business info');
     }
     
     // Verify signature with user's app secret (or fallback to global)
