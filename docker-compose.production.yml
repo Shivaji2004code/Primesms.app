@@ -1,39 +1,40 @@
 version: '3.8'
 
 services:
-  client:
+  app:
     build:
-      context: ./client
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_URL=${VITE_API_URL:-http://localhost:5000}
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:5000}
-    depends_on:
-      - server
-    restart: unless-stopped
-
-  server:
-    build:
-      context: ./server
+      context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "${PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
-      - PORT=5000
+      - PORT=${PORT:-3000}
       - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-primesms}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
-      - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
-      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
-      - WHATSAPP_WEBHOOK_VERIFY_TOKEN=${WHATSAPP_WEBHOOK_VERIFY_TOKEN}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - META_ACCESS_TOKEN=${META_ACCESS_TOKEN}
+      - META_PHONE_NUMBER_ID=${META_PHONE_NUMBER_ID}
+      - META_VERIFY_TOKEN=${META_VERIFY_TOKEN}
+      - META_APP_SECRET=${META_APP_SECRET}
+      - WEBHOOK_DEBUG_TOKEN=${WEBHOOK_DEBUG_TOKEN}
       - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+      - GRAPH_API_VERSION=${GRAPH_API_VERSION:-v22.0}
+      - COOLIFY_DEPLOYMENT=true
     depends_on:
       - postgres
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   postgres:
     image: postgres:15
@@ -43,9 +44,15 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./migration_add_app_secret.sql:/docker-entrypoint-initdb.d/01-migration_add_app_secret.sql
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

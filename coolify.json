@@ -1,0 +1,21 @@
+{
+  "name": "primesms-app",
+  "type": "docker-compose",
+  "dockerComposeFile": "docker-compose.production.yml",
+  "buildCommand": "npm run build:prod",
+  "startCommand": "npm run start:prod",
+  "environment": {
+    "NODE_ENV": "production",
+    "PORT": "3000"
+  },
+  "healthCheck": {
+    "path": "/health",
+    "interval": "30s",
+    "timeout": "10s",
+    "retries": 3
+  },
+  "domains": ["primesms.app", "www.primesms.app"],
+  "ssl": true,
+  "autoDeployment": true,
+  "branches": ["main"]
+}

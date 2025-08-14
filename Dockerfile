@@ -26,6 +26,9 @@ RUN npm run build
 # Stage 3: Production runtime
 FROM node:18-alpine AS production
 
+# Install curl for health checks (Coolify compatible)
+RUN apk add --no-cache curl
+
 WORKDIR /app
 
 # Install only production dependencies
@@ -39,6 +42,10 @@ COPY --from=server-builder /app/server/ecosystem.config.js ./
 # Copy built client into server's static directory
 COPY --from=client-builder /app/client/dist ./dist/client-static
 
+# Copy database migration files for initialization
+COPY migration_add_app_secret.sql ./
+COPY database_schema.sql ./
+
 # Create uploads directory
 RUN mkdir -p uploads
 
@@ -51,15 +58,19 @@ RUN chown -R prime:nodejs /app
 
 USER prime
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:'+process.env.PORT+'/api/health', (res) => { \
+# Health check (Coolify compatible with curl and fallback)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-3000}/health || node -e "require('http').get('http://localhost:'+(process.env.PORT||3000)+'/health', (res) => { \
     if (res.statusCode === 200) process.exit(0); \
     else process.exit(1); \
   }).on('error', () => process.exit(1))"
 
-# Expose port
-EXPOSE 5050
+# Expose port (Coolify uses PORT env var)
+EXPOSE 3000
+
+# Environment variables for Coolify
+ENV NODE_ENV=production
+ENV PORT=3000
 
 # Start the application
 CMD ["node", "dist/index.js"]

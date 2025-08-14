@@ -1,0 +1,40 @@
+{
+  "name": "primesms-app",
+  "version": "1.0.0",
+  "description": "Prime SMS - WhatsApp Business API Platform",
+  "main": "server/dist/index.js",
+  "scripts": {
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client && npm ci && npm run build",
+    "build:server": "cd server && npm ci && npm run build && npm run copy:client",
+    "build:prod": "npm run build",
+    "start": "cd server && npm start",
+    "start:prod": "cd server && npm run start:prod",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "install:all": "npm ci && cd client && npm ci && cd ../server && npm ci",
+    "health": "curl -f http://localhost:3000/health || exit 1"
+  },
+  "keywords": [
+    "whatsapp",
+    "business-api",
+    "sms",
+    "messaging",
+    "meta",
+    "webhook"
+  ],
+  "author": "Prime SMS Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Shivaji2004code/Primesms.app.git"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

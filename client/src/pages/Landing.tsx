@@ -47,7 +47,7 @@ export default function Landing() {
               
               <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
                 WhatsApp Business API
-                <span className="text-emerald-500 block mt-2">WhatsApp at Scale</span>
+                <span className="text-emerald-500 block mt-2">Turn WhatsApp conversations into customers.</span>
               </h1>
               
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
