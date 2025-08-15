@@ -22,7 +22,9 @@ import {
   Target,
   Star,
   Crown,
-  RefreshCw
+  RefreshCw,
+  DollarSign,
+  X
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { Button } from '../components/ui/button';
@@ -672,95 +674,78 @@ export default function CustomizeMessage() {
 
   return (
     <>
-      {/* Simple Pricing Modal */}
+      {/* Premium Cost Preview Modal */}
       {showPricingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-slate-200/50">
+            {/* Elegant Header */}
+            <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-8 py-6 rounded-t-3xl">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <Send className="h-5 w-5 text-emerald-600" />
+                  <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+                    <DollarSign className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">Campaign Cost Preview</h3>
-                    <p className="text-sm text-gray-600">Review campaign details and cost</p>
+                    <h3 className="text-xl font-semibold text-white">Campaign Cost</h3>
+                    <p className="text-slate-300 text-sm">Review before sending</p>
                   </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPricingModal(false)}
+                  className="text-white/80 hover:text-white hover:bg-white/10 h-8 w-8 p-0 rounded-xl"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-8">
+              {/* Cost Summary */}
+              <div className="text-center mb-8">
+                <div className="text-4xl font-bold text-slate-900 mb-2">₹{calculateCampaignCost().totalCost}</div>
+                <div className="text-slate-600">{excelData.length} recipients • {getSelectedTemplateCategory().toLowerCase()}</div>
               </div>
 
-              {/* Campaign Details */}
-              <div className="space-y-4 mb-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="text-2xl font-bold text-blue-600">{excelData.length}</div>
-                    <div className="text-sm text-blue-800">Recipients</div>
-                  </div>
-                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <div className="text-2xl font-bold text-purple-600">{getSelectedTemplateCategory()}</div>
-                    <div className="text-sm text-purple-800">Template Type</div>
-                  </div>
+              {/* Cost Breakdown */}
+              <div className="space-y-4 mb-8">
+                <div className="flex justify-between items-center py-3 border-b border-slate-100">
+                  <span className="text-slate-600">Per message</span>
+                  <span className="font-semibold text-slate-900">₹{calculateCampaignCost().pricePerMessage}</span>
                 </div>
-
-                {/* Pricing Breakdown */}
-                <div className="p-4 bg-gray-50 rounded-lg border">
-                  <div className="text-lg font-semibold text-gray-900 mb-3">Pricing Breakdown</div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Cost per message:</span>
-                      <span className="font-medium">₹{calculateCampaignCost().pricePerMessage}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Number of recipients:</span>
-                      <span className="font-medium">{excelData.length}</span>
-                    </div>
-                    <div className="border-t pt-2 mt-2">
-                      <div className="flex justify-between items-center text-lg font-bold">
-                        <span className="text-gray-900">Total Cost:</span>
-                        <span className="text-emerald-600">₹{calculateCampaignCost().totalCost}</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="flex justify-between items-center py-3">
+                  <span className="text-slate-600">Total messages</span>
+                  <span className="font-semibold text-slate-900">{excelData.length}</span>
                 </div>
-
-                {/* First Recipient Preview */}
-                {generateFirstRecipientPreview() && (
-                  <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <div className="text-sm font-semibold text-yellow-800 mb-2">First Recipient Preview</div>
-                    <div className="text-sm text-yellow-700">
-                      <div className="font-medium">To: {generateFirstRecipientPreview()?.recipient}</div>
-                      <div className="mt-2 whitespace-pre-wrap">{generateFirstRecipientPreview()?.message}</div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Actions */}
-              <div className="flex space-x-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowPricingModal(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
+              <div className="space-y-3">
                 <Button
                   onClick={confirmAndSend}
                   disabled={sendingLoading}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="w-full h-12 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   {sendingLoading ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                       Sending...
                     </>
                   ) : (
                     <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Confirm & Send (₹{calculateCampaignCost().totalCost})
+                      <Send className="h-5 w-5 mr-2" />
+                      Confirm & Send
                     </>
                   )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowPricingModal(false)}
+                  className="w-full h-12 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-2xl transition-all duration-200"
+                  disabled={sendingLoading}
+                >
+                  Cancel
                 </Button>
               </div>
             </div>

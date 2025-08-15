@@ -1407,154 +1407,79 @@ export default function WhatsAppBulkMessaging() {
         </div>
       </div>
 
-      {/* Professional Pricing Modal */}
+      {/* Premium Cost Preview Modal */}
       {showPricingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-gray-100">
-            {/* Header with gradient */}
-            <div className="bg-gradient-to-r from-emerald-600 to-blue-600 px-6 py-5 text-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-white bg-opacity-10 backdrop-blur-sm"></div>
-              <div className="relative z-10 flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                    <DollarSign className="h-6 w-6 text-white" />
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-slate-200/50">
+            {/* Elegant Header */}
+            <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-8 py-6 rounded-t-3xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+                    <DollarSign className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-white">Campaign Preview</h3>
-                    <p className="text-emerald-100 opacity-90">Review costs and details before sending</p>
+                    <h3 className="text-xl font-semibold text-white">Campaign Cost</h3>
+                    <p className="text-slate-300 text-sm">Review before sending</p>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowPricingModal(false)}
-                  className="text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200"
+                  className="text-white/80 hover:text-white hover:bg-white/10 h-8 w-8 p-0 rounded-xl"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="absolute -bottom-2 -right-20 w-40 h-40 bg-white bg-opacity-10 rounded-full blur-2xl"></div>
-              <div className="absolute -top-2 -left-10 w-32 h-32 bg-white bg-opacity-10 rounded-full blur-xl"></div>
             </div>
 
-            <div className="p-6 max-h-[calc(90vh-140px)] overflow-y-auto">
+            <div className="p-8">
+              {/* Cost Summary */}
+              <div className="text-center mb-8">
+                <div className="text-4xl font-bold text-slate-900 mb-2">₹{calculatedCost.toFixed(2)}</div>
+                <div className="text-slate-600">{recipients.length} recipients • {getSelectedTemplateCategory().toLowerCase()}</div>
+              </div>
 
-              {/* Campaign Details */}
-              <div className="space-y-6 mb-8">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl border border-blue-200 shadow-sm">
-                    <div className="text-2xl font-bold text-blue-700">{recipients.length}</div>
-                    <div className="text-sm font-medium text-blue-600">Recipients</div>
-                  </div>
-                  <div className="p-5 bg-gradient-to-br from-purple-50 to-pink-100 rounded-xl border border-purple-200 shadow-sm">
-                    <div className="text-2xl font-bold text-purple-700">{getSelectedTemplateCategory()}</div>
-                    <div className="text-sm font-medium text-purple-600">Template Type</div>
-                  </div>
-                  <div className="p-5 bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl border border-emerald-200 shadow-sm">
-                    <div className="text-2xl font-bold text-emerald-700">₹{calculatedCost.toFixed(2)}</div>
-                    <div className="text-sm font-medium text-emerald-600">Total Cost</div>
-                  </div>
+              {/* Cost Breakdown */}
+              <div className="space-y-4 mb-8">
+                <div className="flex justify-between items-center py-3 border-b border-slate-100">
+                  <span className="text-slate-600">Per message</span>
+                  <span className="font-semibold text-slate-900">₹{PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof PRICING] || PRICING.UTILITY}</span>
                 </div>
-
-                {/* Pricing Breakdown */}
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200 shadow-sm">
-                  <div className="flex items-center mb-4">
-                    <DollarSign className="h-5 w-5 text-gray-600 mr-2" />
-                    <h4 className="text-lg font-semibold text-gray-900">Pricing Breakdown</h4>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200 border-opacity-60">
-                      <span className="text-gray-700 font-medium">Template Category:</span>
-                      <span className="px-3 py-1 bg-white rounded-full text-sm font-semibold border shadow-sm">
-                        {getSelectedTemplateCategory()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200 border-opacity-60">
-                      <span className="text-gray-700 font-medium">Rate per message:</span>
-                      <span className="font-semibold text-gray-900">₹{PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof PRICING] || PRICING.UTILITY}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200 border-opacity-60">
-                      <span className="text-gray-700 font-medium">Recipients count:</span>
-                      <span className="font-semibold text-gray-900">{recipients.length}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-3 mt-3 border-t border-gray-300">
-                      <span className="text-xl font-bold text-gray-900">Total Amount:</span>
-                      <span className="text-2xl font-bold text-emerald-600">₹{calculatedCost.toFixed(2)}</span>
-                    </div>
-                  </div>
+                <div className="flex justify-between items-center py-3">
+                  <span className="text-slate-600">Total messages</span>
+                  <span className="font-semibold text-slate-900">{recipients.length}</span>
                 </div>
-
-                {/* Campaign Details */}
-                {campaignName && (
-                  <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-5 border border-emerald-200 shadow-sm">
-                    <div className="flex items-center mb-2">
-                      <Target className="h-5 w-5 text-emerald-600 mr-2" />
-                      <span className="font-semibold text-emerald-800">Campaign Name</span>
-                    </div>
-                    <div className="text-lg font-medium text-emerald-700">{campaignName}</div>
-                  </div>
-                )}
-
-                {/* Message Preview */}
-                {templatePreview && (
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center">
-                        <MessageSquare className="h-5 w-5 text-blue-600 mr-2" />
-                        <span className="font-semibold text-blue-800">Message Preview</span>
-                      </div>
-                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                        Sample for {recipients[0] || 'recipient'}
-                      </span>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border-2 border-blue-100 shadow-inner">
-                      <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-                        {generateLivePreview()}
-                      </div>
-                    </div>
-                    <div className="mt-3 text-xs text-blue-600 opacity-75">
-                      Preview shows actual message with variables populated
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Actions */}
-              <div className="border-t border-gray-200 pt-6 mt-6">
-                <div className="flex space-x-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowPricingModal(false)}
-                    className="flex-1 py-3 text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200"
-                    disabled={loading.sending}
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={confirmAndSend}
-                    disabled={loading.sending}
-                    className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 font-semibold"
-                  >
-                    {loading.sending ? (
-                      <>
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                        Sending Campaign...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-5 w-5 mr-2" />
-                        Confirm & Send • ₹{calculatedCost.toFixed(2)}
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <div className="text-center mt-3">
-                  <p className="text-xs text-gray-500">
-                    By confirming, you agree to send {recipients.length} messages at ₹{PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof PRICING] || PRICING.UTILITY} each
-                  </p>
-                </div>
+              <div className="space-y-3">
+                <Button
+                  onClick={confirmAndSend}
+                  disabled={loading.sending}
+                  className="w-full h-12 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  {loading.sending ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-5 w-5 mr-2" />
+                      Confirm & Send
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowPricingModal(false)}
+                  className="w-full h-12 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-2xl transition-all duration-200"
+                  disabled={loading.sending}
+                >
+                  Cancel
+                </Button>
               </div>
             </div>
           </div>
