@@ -1407,79 +1407,97 @@ export default function WhatsAppBulkMessaging() {
         </div>
       </div>
 
-      {/* Premium Cost Preview Modal */}
+      {/* Ultra-Professional Cost Preview Modal */}
       {showPricingModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-slate-200/50">
-            {/* Elegant Header */}
-            <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-8 py-6 rounded-t-3xl">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-lg flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl max-w-lg w-full border border-white/20">
+            {/* Clean Professional Header */}
+            <div className="px-8 py-8 border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20">
-                    <DollarSign className="h-5 w-5 text-white" />
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gray-900 rounded-xl flex items-center justify-center">
+                    <DollarSign className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-white">Campaign Cost</h3>
-                    <p className="text-slate-300 text-sm">Review before sending</p>
+                    <h3 className="text-2xl font-bold text-gray-900">Cost Estimate</h3>
+                    <p className="text-gray-500 text-sm font-medium">Campaign pricing breakdown</p>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowPricingModal(false)}
-                  className="text-white/80 hover:text-white hover:bg-white/10 h-8 w-8 p-0 rounded-xl"
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 h-10 w-10 p-0 rounded-lg transition-colors"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
             </div>
 
-            <div className="p-8">
-              {/* Cost Summary */}
+            <div className="px-8 py-8">
+              {/* Premium Cost Display */}
               <div className="text-center mb-8">
-                <div className="text-4xl font-bold text-slate-900 mb-2">₹{calculatedCost.toFixed(2)}</div>
-                <div className="text-slate-600">{recipients.length} recipients • {getSelectedTemplateCategory().toLowerCase()}</div>
-              </div>
-
-              {/* Cost Breakdown */}
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between items-center py-3 border-b border-slate-100">
-                  <span className="text-slate-600">Per message</span>
-                  <span className="font-semibold text-slate-900">₹{PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof PRICING] || PRICING.UTILITY}</span>
-                </div>
-                <div className="flex justify-between items-center py-3">
-                  <span className="text-slate-600">Total messages</span>
-                  <span className="font-semibold text-slate-900">{recipients.length}</span>
+                <div className="text-5xl font-bold text-gray-900 mb-2">₹{calculatedCost.toFixed(2)}</div>
+                <div className="text-gray-500 font-medium">
+                  {recipients.length} {recipients.length === 1 ? 'recipient' : 'recipients'} • 
+                  <span className="capitalize">{getSelectedTemplateCategory().toLowerCase()}</span> template
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="space-y-3">
+              {/* Sophisticated Cost Breakdown */}
+              <div className="bg-gray-50/80 rounded-xl p-6 mb-8">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-900 mb-1">₹{PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof PRICING] || PRICING.UTILITY}</div>
+                    <div className="text-gray-500 text-sm font-medium">Per message</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-900 mb-1">{recipients.length.toLocaleString()}</div>
+                    <div className="text-gray-500 text-sm font-medium">Recipients</div>
+                  </div>
+                </div>
+                <div className="border-t border-gray-200 mt-6 pt-6">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 font-medium">Campaign Total</span>
+                    <span className="text-2xl font-bold text-gray-900">₹{calculatedCost.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Premium Action Buttons */}
+              <div className="space-y-4">
                 <Button
                   onClick={confirmAndSend}
                   disabled={loading.sending}
-                  className="w-full h-12 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="w-full h-14 bg-gray-900 hover:bg-black text-white font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   {loading.sending ? (
                     <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Sending...
+                      <Loader2 className="h-6 w-6 mr-3 animate-spin" />
+                      Processing Campaign...
                     </>
                   ) : (
                     <>
-                      <Send className="h-5 w-5 mr-2" />
-                      Confirm & Send
+                      <Send className="h-6 w-6 mr-3" />
+                      Confirm & Send Campaign
                     </>
                   )}
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   onClick={() => setShowPricingModal(false)}
-                  className="w-full h-12 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-2xl transition-all duration-200"
+                  className="w-full h-12 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl transition-all duration-200 font-medium"
                   disabled={loading.sending}
                 >
-                  Cancel
+                  Review Campaign Details
                 </Button>
+              </div>
+            </div>
+            
+            {/* Professional Footer */}
+            <div className="px-8 py-4 bg-gray-50/50 rounded-b-2xl border-t border-gray-100">
+              <div className="text-center text-xs text-gray-500">
+                You will be charged ₹{PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof PRICING] || PRICING.UTILITY} per successful delivery
               </div>
             </div>
           </div>
