@@ -2424,13 +2424,14 @@ router.post('/send-custom-messages', auth_1.requireAuth, async (req, res) => {
 router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
     try {
         const userId = req.session.user.id;
-        const { templateName, language, wabaId, data, campaignName } = req.body;
+        const { templateName, language, phoneNumberId, wabaId, data, campaignName, recipientColumn, variableMappings } = req.body;
+        const actualWabaId = wabaId || phoneNumberId;
         console.log(`🚀 BULK-CUSTOMIZE-SEND: Starting custom bulk send for user ${userId}`);
         console.log(`📊 Template: ${templateName}, Language: ${language}, Recipients: ${data?.length || 0}`);
-        if (!templateName || !language || !wabaId || !data || !Array.isArray(data)) {
+        if (!templateName || !language || !actualWabaId || !data || !Array.isArray(data)) {
             return res.status(400).json({
                 success: false,
-                error: 'Missing required fields: templateName, language, wabaId, or data array'
+                error: 'Missing required fields: templateName, language, phoneNumberId/wabaId, or data array'
             });
         }
         if (data.length === 0) {
@@ -2441,20 +2442,31 @@ router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
         }
         const validRecipients = [];
         const errors = [];
+        console.log(`📋 Processing data with recipientColumn: ${recipientColumn}`);
+        console.log(`🔄 Variable mappings:`, variableMappings);
         for (const entry of data) {
-            if (!entry.phone) {
-                errors.push(`Missing phone number for entry: ${JSON.stringify(entry)}`);
+            const phoneValue = entry[recipientColumn];
+            if (!phoneValue) {
+                errors.push(`Missing phone number in column '${recipientColumn}' for entry: ${JSON.stringify(entry)}`);
                 continue;
             }
-            const cleanedPhone = entry.phone.toString().replace(/\D/g, '');
+            const cleanedPhone = phoneValue.toString().replace(/\D/g, '');
             if (cleanedPhone.length >= 10) {
+                const recipientVariables = {};
+                Object.keys(variableMappings).forEach(variableIndex => {
+                    const columnName = variableMappings[variableIndex];
+                    const value = entry[columnName];
+                    if (value !== undefined && value !== null) {
+                        recipientVariables[variableIndex] = value.toString();
+                    }
+                });
                 validRecipients.push({
-                    ...entry,
-                    phone: cleanedPhone
+                    phone: cleanedPhone,
+                    ...recipientVariables
                 });
             }
             else {
-                errors.push(`Invalid phone number: ${entry.phone}`);
+                errors.push(`Invalid phone number: ${phoneValue} in column '${recipientColumn}'`);
             }
         }
         if (validRecipients.length === 0) {
@@ -2487,7 +2499,7 @@ router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
                 error: 'Failed to check credit balance'
             });
         }
-        const numberResult = await db_1.default.query('SELECT access_token, business_name FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true', [userId, wabaId]);
+        const numberResult = await db_1.default.query('SELECT access_token, business_name FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true', [userId, actualWabaId]);
         if (numberResult.rows.length === 0) {
             return res.status(403).json({
                 success: false,
@@ -2507,18 +2519,17 @@ router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
         for (const recipientData of validRecipients) {
             try {
                 const result = await db_1.default.query(`INSERT INTO campaign_logs 
-           (user_id, phone_number_id, template_name, language, recipient, 
-            variables, status, campaign_name, created_at, updated_at) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) 
+           (user_id, campaign_name, template_used, phone_number_id, recipient_number, language_code, status, campaign_data, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
            RETURNING id`, [
                     userId,
-                    wabaId,
+                    campaignNameFinal,
                     templateName,
-                    language,
+                    actualWabaId,
                     recipientData.phone,
-                    JSON.stringify(recipientData),
+                    language,
                     'pending',
-                    campaignNameFinal
+                    JSON.stringify({ variables: recipientData, template_components: templateResult.rows[0].components })
                 ]);
                 campaignEntries.push({
                     id: result.rows[0].id,
@@ -2540,6 +2551,34 @@ router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
             });
         }
         console.log(`💾 BULK-CUSTOMIZE-SEND: Created ${campaignEntries.length} campaign entries`);
+        let creditDeductionSuccess = false;
+        let creditBalance = 0;
+        try {
+            const { cost, category } = await (0, creditSystem_1.calculateCreditCost)(userId, templateName, validRecipients.length);
+            const creditResult = await (0, creditSystem_1.deductCredits)({
+                userId,
+                amount: cost,
+                transactionType: creditSystem_1.CreditTransactionType.DEDUCTION_CUSTOMISE_SMS,
+                templateCategory: category,
+                templateName: templateName,
+                description: `Customize campaign: ${campaignNameFinal} (${validRecipients.length} recipients)`
+            });
+            if (creditResult.success) {
+                creditDeductionSuccess = true;
+                creditBalance = creditResult.newBalance;
+                console.log(`[CREDIT SYSTEM] Deducted ${cost} credits for Customize. New balance: ${creditBalance}`);
+            }
+            else {
+                throw new Error('Credit deduction failed');
+            }
+        }
+        catch (creditError) {
+            console.error('Credit deduction error:', creditError);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to deduct credits'
+            });
+        }
         console.log(`🚀 BULK-CUSTOMIZE-SEND: Starting to send ${campaignEntries.length} messages in batches of 200`);
         let successCount = 0;
         let failCount = 0;
@@ -2552,7 +2591,7 @@ router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
         for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
             const batch = batches[batchIndex];
             console.log(`📤 BULK-CUSTOMIZE-SEND: Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} messages)`);
-            const batchPromises = batch.map(campaignEntry => sendTemplateMessage(wabaId, access_token, campaignEntry.recipient, templateName, language, campaignEntry.variables, templateResult.rows[0].components, campaignEntry.id.toString(), userId, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].header_media_url, templateResult.rows[0].header_handle, templateResult.rows[0].media_id, templateResult.rows[0].category));
+            const batchPromises = batch.map(campaignEntry => sendTemplateMessage(actualWabaId, access_token, campaignEntry.recipient, templateName, language, campaignEntry.variables, templateResult.rows[0].components, campaignEntry.id.toString(), userId, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].header_media_url, templateResult.rows[0].header_handle, templateResult.rows[0].media_id, templateResult.rows[0].category));
             const batchResults = await Promise.allSettled(batchPromises);
             batchResults.forEach((result, index) => {
                 const campaignEntry = batch[index];
@@ -2583,29 +2622,6 @@ router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
             }
         }
         console.log(`📊 BULK-CUSTOMIZE-SEND COMPLETED: ${successCount} successful, ${failCount} failed`);
-        let creditDeductionSuccess = false;
-        let creditBalance = 0;
-        if (successCount > 0) {
-            try {
-                const { cost, category } = await (0, creditSystem_1.calculateCreditCost)(userId, templateName, successCount);
-                const creditResult = await (0, creditSystem_1.deductCredits)({
-                    userId,
-                    amount: cost,
-                    transactionType: creditSystem_1.CreditTransactionType.DEDUCTION_CUSTOMISE_SMS,
-                    templateCategory: category,
-                    templateName: templateName,
-                    description: `Bulk customize campaign: ${campaignNameFinal} (${successCount} successful sends)`
-                });
-                if (creditResult.success) {
-                    creditDeductionSuccess = true;
-                    creditBalance = creditResult.newBalance;
-                    console.log(`[CREDIT SYSTEM] Deducted ${cost} credits for bulk customize. New balance: ${creditBalance}`);
-                }
-            }
-            catch (creditError) {
-                console.error('Credit deduction error:', creditError);
-            }
-        }
         res.json({
             success: true,
             data: {
@@ -2614,7 +2630,6 @@ router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
                 successful_sends: successCount,
                 failed_sends: failCount,
                 status: 'completed',
-                errors: errors.slice(0, 10),
                 creditInfo: {
                     deducted: creditDeductionSuccess,
                     newBalance: creditBalance
