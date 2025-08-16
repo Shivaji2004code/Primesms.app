@@ -36,7 +36,7 @@ export default function SideNav() {
       icon: LayoutDashboard
     },
     {
-      name: 'WhatsApp Bulk',
+      name: 'WhatsApp Quick Send',
       path: '/user/whatsapp-bulk',
       icon: Send
     },

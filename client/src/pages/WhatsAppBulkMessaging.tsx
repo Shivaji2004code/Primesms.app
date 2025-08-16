@@ -4,8 +4,8 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 export default function WhatsAppBulkMessagingPage() {
   return (
     <DashboardLayout 
-      title="WhatsApp Bulk Messaging"
-      subtitle="Send bulk messages to multiple recipients using approved templates."
+      title="WhatsApp Quick Send"
+      subtitle="Send messages to multiple recipients using approved templates with automatic 200-message batching."
     >
       <WhatsAppBulkMessaging />
     </DashboardLayout>

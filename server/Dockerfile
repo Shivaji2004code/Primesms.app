@@ -22,7 +22,7 @@ RUN npm ci --only=production && npm cache clean --force
 RUN mkdir -p uploads
 
 # Expose port
-EXPOSE 3000
+EXPOSE 5050
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

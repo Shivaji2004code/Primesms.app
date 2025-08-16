@@ -398,7 +398,7 @@ export default function WhatsAppBulkMessaging() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/whatsapp/import-bulk-recipients', {
+      const response = await fetch('/api/whatsapp/import-recipients', {
         method: 'POST',
         credentials: 'include',
         body: formData
@@ -642,21 +642,48 @@ export default function WhatsAppBulkMessaging() {
   const handleBulkQuickSend = async () => {
     setLoading(prev => ({ ...prev, sending: true }));
     try {
-      const payload = {
-        phone_number_id: selectedNumber,
-        template_name: selectedTemplate,
-        language: selectedLanguage,
-        recipients_text: recipients.join('\n'),
-        variables: templateVariables,
-        campaign_name: campaignName || `Bulk Quick Send - ${selectedTemplate} - ${new Date().toISOString()}`
-      };
+      // Check if we need to send FormData (for header image) or JSON
+      const hasHeaderImage = headerImage !== null;
+      
+      let response: Response;
+      
+      if (hasHeaderImage) {
+        // Use FormData for image upload
+        const formData = new FormData();
+        formData.append('phone_number_id', selectedNumber);
+        formData.append('template_name', selectedTemplate);
+        formData.append('language', selectedLanguage);
+        formData.append('recipients_text', recipients.join('\n'));
+        formData.append('variables', JSON.stringify(templateVariables));
+        formData.append('campaign_name', campaignName || `Quick Send - ${selectedTemplate} - ${new Date().toISOString()}`);
+        
+        if (headerImage) {
+          formData.append('headerImage', headerImage);
+        }
+        
+        response = await fetch('/api/whatsapp/quick-send', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+      } else {
+        // Use JSON for regular requests
+        const payload = {
+          phone_number_id: selectedNumber,
+          template_name: selectedTemplate,
+          language: selectedLanguage,
+          recipients_text: recipients.join('\n'),
+          variables: templateVariables,
+          campaign_name: campaignName || `Quick Send - ${selectedTemplate} - ${new Date().toISOString()}`
+        };
 
-      const response = await fetch('/api/whatsapp/bulk-quick-send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
+        response = await fetch('/api/whatsapp/quick-send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -664,8 +691,8 @@ export default function WhatsAppBulkMessaging() {
         setAlertState({
           show: true,
           type: 'success',
-          title: 'Bulk campaign started successfully',
-          message: `Processing ${recipients.length} recipients in loops of ${data.batchSize || 200}. Job ID: ${data.jobId}. Server load optimized with controlled sending rate.`
+          title: 'Messages sent successfully',
+          message: `Processed ${recipients.length} recipients in batches of 200 with 1-second delays. ${data.successful_sends || 0} sent, ${data.failed_sends || 0} failed.`
         });
         
         // Reset form
