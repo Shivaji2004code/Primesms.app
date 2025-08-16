@@ -3,21 +3,20 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy pre-built client files (should be built locally first)
-COPY client-build ./client-build
-
-# Copy server package files
+# Copy package files
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm ci --only=production
+# Install dependencies (including devDependencies for TypeScript build)
+RUN npm ci
 
-# Copy server source code
-COPY src ./src
-COPY tsconfig.json ./
+# Copy all source files
+COPY . .
 
-# Build TypeScript only (client already built)
-RUN npx tsc && npm run copy:client
+# Build application (TypeScript only, client should already be built)
+RUN npm run build
+
+# Remove devDependencies to reduce image size
+RUN npm ci --only=production && npm cache clean --force
 
 # Create uploads directory
 RUN mkdir -p uploads
