@@ -11,9 +11,15 @@ ADD COLUMN IF NOT EXISTS read_at TIMESTAMP;
 
 -- Add unique constraint for message_id and user_id to support ON CONFLICT
 -- This constraint is needed for webhook updates
+DROP INDEX IF EXISTS idx_campaign_logs_user_message_unique;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_logs_user_message_unique 
     ON campaign_logs(user_id, message_id) 
-    WHERE message_id IS NOT NULL;
+    WHERE message_id IS NOT NULL AND message_id != '';
+
+-- Alternative constraint for webhook lookups by message_id only
+CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_logs_message_id_unique 
+    ON campaign_logs(message_id) 
+    WHERE message_id IS NOT NULL AND message_id != '';
 
 -- Add composite index for webhook lookups
 CREATE INDEX IF NOT EXISTS idx_campaign_logs_message_id ON campaign_logs(message_id)

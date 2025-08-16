@@ -160,10 +160,11 @@ class RealCampaignLogsRepo implements CampaignLogsRepo {
         ${timestampClauses ? ', ' + timestampClauses : ''}
       `;
 
+      // First try to update existing record
       const updateResult = await client.query(`
         UPDATE campaign_logs 
         SET ${setClause}
-        WHERE user_id = $3 AND message_id = $4
+        WHERE user_id = $3::UUID AND message_id = $4::VARCHAR
         RETURNING id, campaign_name, recipient_number, status
       `, [status, JSON.stringify(meta || {}), userId, messageId]);
       
@@ -183,17 +184,17 @@ class RealCampaignLogsRepo implements CampaignLogsRepo {
             campaign_name, template_used, 
             sent_at, delivered_at, read_at,
             created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, 'webhook_only', 'unknown', 
+          ) VALUES ($1::UUID, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::JSONB, 'webhook_only', 'unknown', 
             ${status === 'sent' ? 'CURRENT_TIMESTAMP' : 'NULL'},
             ${status === 'delivered' ? 'CURRENT_TIMESTAMP' : 'NULL'},
             ${status === 'read' ? 'CURRENT_TIMESTAMP' : 'NULL'},
             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-          ON CONFLICT (user_id, message_id) DO UPDATE SET
-            status = $4,
-            campaign_data = campaign_logs.campaign_data || $5::jsonb,
-            ${status === 'sent' ? 'sent_at = COALESCE(campaign_logs.sent_at, CURRENT_TIMESTAMP),' : ''}
-            ${status === 'delivered' ? 'delivered_at = COALESCE(campaign_logs.delivered_at, CURRENT_TIMESTAMP),' : ''}
-            ${status === 'read' ? 'read_at = COALESCE(campaign_logs.read_at, CURRENT_TIMESTAMP),' : ''}
+          ON CONFLICT (message_id) DO UPDATE SET
+            status = EXCLUDED.status,
+            campaign_data = COALESCE(campaign_logs.campaign_data, '{}'::jsonb) || EXCLUDED.campaign_data,
+            ${status === 'sent' ? 'sent_at = COALESCE(campaign_logs.sent_at, EXCLUDED.sent_at),' : ''}
+            ${status === 'delivered' ? 'delivered_at = COALESCE(campaign_logs.delivered_at, EXCLUDED.delivered_at),' : ''}
+            ${status === 'read' ? 'read_at = COALESCE(campaign_logs.read_at, EXCLUDED.read_at),' : ''}
             updated_at = CURRENT_TIMESTAMP
         `, [userId, messageId, recipientNumber, status, JSON.stringify(meta || {})]);
         
