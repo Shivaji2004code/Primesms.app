@@ -22,7 +22,7 @@ class BulkQueue {
         this.jobs = new Map();
     }
     enqueue(input) {
-        const BATCH_SIZE = parseInt(process.env.BULK_BATCH_SIZE || '50', 10);
+        const LOOP_SIZE = parseInt(process.env.BULK_LOOP_SIZE || '200', 10);
         const HARD_CAP = parseInt(process.env.BULK_HARD_CAP || '50000', 10);
         if (!input.recipients?.length) {
             throw new Error('No recipients provided');
@@ -31,14 +31,14 @@ class BulkQueue {
             throw new Error(`Recipients exceed hard cap of ${HARD_CAP}`);
         }
         const jobId = (0, crypto_1.randomUUID)();
-        const totalBatches = Math.ceil(input.recipients.length / BATCH_SIZE);
+        const totalLoops = Math.ceil(input.recipients.length / LOOP_SIZE);
         const job = {
             jobId,
             userId: input.userId,
             campaignId: input.campaignId || null,
             totalRecipients: input.recipients.length,
-            batchSize: BATCH_SIZE,
-            totalBatches,
+            batchSize: LOOP_SIZE,
+            totalBatches: totalLoops,
             createdAt: new Date().toISOString(),
             state: 'queued',
             sent: 0,
@@ -50,7 +50,8 @@ class BulkQueue {
             jobId,
             userId: input.userId,
             recipients: input.recipients.length,
-            batches: totalBatches
+            loops: totalLoops,
+            loopSize: LOOP_SIZE
         });
         this.processJob(jobId, input).catch(error => {
             const currentJob = this.jobs.get(jobId);
@@ -80,42 +81,55 @@ class BulkQueue {
             job.state = 'running';
             logger_1.logger.info('[BULK] Job started', { jobId, userId: input.userId });
             const { phoneNumberId, accessToken } = await this.creds.getCredsByUserId(input.userId);
-            const batches = chunk(input.recipients, job.batchSize);
-            const CONCURRENCY = Math.max(1, parseInt(process.env.BULK_CONCURRENCY || '5', 10));
-            const PAUSE_MS = parseInt(process.env.BULK_PAUSE_MS || '1000', 10);
-            for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-                const batch = batches[batchIndex];
-                logger_1.logger.info('[BULK] Batch started', { jobId, batchIndex, size: batch.length });
-                this.emitSSE(jobId, {
-                    type: 'batch_started',
+            const loops = chunk(input.recipients, job.batchSize);
+            const LOOP_PAUSE_MS = parseInt(process.env.BULK_LOOP_PAUSE_MS || '2000', 10);
+            const MESSAGES_PER_SECOND = parseInt(process.env.BULK_MESSAGES_PER_SECOND || '10', 10);
+            for (let loopIndex = 0; loopIndex < loops.length; loopIndex++) {
+                const loopRecipients = loops[loopIndex];
+                logger_1.logger.info('[BULK] Loop started', {
                     jobId,
-                    batchIndex,
-                    size: batch.length
+                    loopIndex: loopIndex + 1,
+                    totalLoops: loops.length,
+                    loopSize: loopRecipients.length
                 });
-                await this.processBatch(job, batch, {
+                this.emitSSE(jobId, {
+                    type: 'loop_started',
+                    jobId,
+                    loopIndex: loopIndex + 1,
+                    totalLoops: loops.length,
+                    loopSize: loopRecipients.length
+                });
+                await this.processLoop(job, loopRecipients, {
                     userId: input.userId,
                     campaignId: input.campaignId || null,
                     phoneNumberId,
                     accessToken,
                     message: input.message,
-                    batchIndex,
-                    concurrency: CONCURRENCY
+                    loopIndex: loopIndex + 1,
+                    messagesPerSecond: MESSAGES_PER_SECOND
                 }, input.variables, input.recipientVariables);
                 this.emitSSE(jobId, {
-                    type: 'batch_completed',
+                    type: 'loop_completed',
                     jobId,
-                    batchIndex,
+                    loopIndex: loopIndex + 1,
+                    totalLoops: loops.length,
                     sent: job.sent,
                     failed: job.failed
                 });
-                logger_1.logger.info('[BULK] Batch completed', {
+                logger_1.logger.info('[BULK] Loop completed', {
                     jobId,
-                    batchIndex,
+                    loopIndex: loopIndex + 1,
+                    totalLoops: loops.length,
                     sent: job.sent,
                     failed: job.failed
                 });
-                if (batchIndex < batches.length - 1) {
-                    await sleep(PAUSE_MS);
+                if (loopIndex < loops.length - 1) {
+                    logger_1.logger.info('[BULK] Pausing between loops', {
+                        jobId,
+                        pauseMs: LOOP_PAUSE_MS,
+                        nextLoop: loopIndex + 2
+                    });
+                    await sleep(LOOP_PAUSE_MS);
                 }
             }
             job.state = job.failed > 0 && job.sent === 0 ? 'failed' : 'completed';
@@ -146,37 +160,54 @@ class BulkQueue {
             });
         }
     }
-    async processBatch(job, recipients, options, staticVariables, recipientVariables) {
-        const { concurrency } = options;
-        let index = 0;
-        const workers = [];
-        const processNext = async () => {
-            while (index < recipients.length) {
-                const currentIndex = index++;
-                const recipient = recipients[currentIndex];
-                try {
-                    let variables = staticVariables;
-                    if (recipientVariables) {
-                        const recipientData = recipientVariables.find(rv => rv.recipient === recipient);
-                        variables = recipientData?.variables || staticVariables;
-                    }
-                    await this.sendSingleMessage(job, recipient, options, variables);
+    async processLoop(job, recipients, options, staticVariables, recipientVariables) {
+        const { messagesPerSecond } = options;
+        const delayBetweenMessages = Math.ceil(1000 / messagesPerSecond);
+        for (let i = 0; i < recipients.length; i++) {
+            const recipient = recipients[i];
+            try {
+                let variables = staticVariables;
+                if (recipientVariables) {
+                    const recipientData = recipientVariables.find(rv => rv.recipient === recipient);
+                    variables = recipientData?.variables || staticVariables;
                 }
-                catch (error) {
-                    logger_1.logger.error('[BULK] Message processing error', {
-                        jobId: job.jobId,
-                        recipient,
-                        error
-                    });
+                await this.sendSingleMessage(job, recipient, {
+                    ...options,
+                    batchIndex: options.loopIndex
+                }, variables);
+                if (i < recipients.length - 1) {
+                    await sleep(delayBetweenMessages);
                 }
             }
-        };
-        for (let i = 0; i < Math.min(concurrency, recipients.length); i++) {
-            workers.push(processNext());
+            catch (error) {
+                logger_1.logger.error('[BULK] Message processing error', {
+                    jobId: job.jobId,
+                    recipient,
+                    loopIndex: options.loopIndex,
+                    messageIndex: i + 1,
+                    error
+                });
+            }
         }
-        await Promise.all(workers);
     }
     async sendSingleMessage(job, to, options, variables) {
+        let campaignLogId = null;
+        let templateName = 'unknown';
+        let language = 'en_US';
+        if (options.message.kind === 'template') {
+            templateName = options.message.template.name;
+            language = options.message.template.language_code;
+        }
+        try {
+            campaignLogId = await this.logs.createCampaignLogEntry(options.userId, to, options.campaignId || `BULK_${job.jobId}`, templateName, options.phoneNumberId, language, variables, options.message.kind === 'template' ? options.message.template.components : null);
+        }
+        catch (logError) {
+            logger_1.logger.warn('[BULK] Failed to create campaign log entry', {
+                jobId: job.jobId,
+                to,
+                error: logError
+            });
+        }
         const result = await (0, waSender_1.sendWhatsAppMessage)({
             accessToken: options.accessToken,
             phoneNumberId: options.phoneNumberId,
@@ -191,17 +222,14 @@ class BulkQueue {
                 ok: true,
                 messageId: result.messageId || null
             });
-            if (result.messageId) {
+            if (campaignLogId) {
                 try {
-                    await this.logs.upsertOnSendAck(options.userId, result.messageId, to, options.campaignId, {
-                        source: 'bulk',
-                        jobId: job.jobId,
-                        batchIndex: options.batchIndex
-                    });
+                    await this.logs.updateCampaignLogStatus(campaignLogId, 'sent', result.messageId || undefined);
                 }
                 catch (logError) {
-                    logger_1.logger.error('[BULK] Failed to log successful send', {
+                    logger_1.logger.error('[BULK] Failed to update campaign log with success', {
                         jobId: job.jobId,
+                        campaignLogId,
                         messageId: result.messageId,
                         to,
                         error: logError
@@ -211,7 +239,7 @@ class BulkQueue {
             this.emitSSE(job.jobId, {
                 type: 'message_sent',
                 jobId: job.jobId,
-                batchIndex: options.batchIndex,
+                loopIndex: options.batchIndex,
                 to,
                 messageId: result.messageId || null,
                 sent: job.sent,
@@ -225,10 +253,26 @@ class BulkQueue {
                 ok: false,
                 error: result.error
             });
+            if (campaignLogId) {
+                try {
+                    const errorMessage = typeof result.error === 'object'
+                        ? JSON.stringify(result.error)
+                        : String(result.error || 'Unknown error');
+                    await this.logs.updateCampaignLogStatus(campaignLogId, 'failed', undefined, errorMessage);
+                }
+                catch (logError) {
+                    logger_1.logger.error('[BULK] Failed to update campaign log with failure', {
+                        jobId: job.jobId,
+                        campaignLogId,
+                        to,
+                        error: logError
+                    });
+                }
+            }
             this.emitSSE(job.jobId, {
                 type: 'message_failed',
                 jobId: job.jobId,
-                batchIndex: options.batchIndex,
+                loopIndex: options.batchIndex,
                 to,
                 error: result.error,
                 sent: job.sent,

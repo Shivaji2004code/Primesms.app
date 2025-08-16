@@ -594,7 +594,7 @@ export default function CustomizeMessage() {
         
         toast({
           title: "Bulk custom messages started successfully",
-          description: `Processing ${excelData.length} personalized messages in batches. Job ID: ${result.jobId}. You can track progress in real-time.`,
+          description: `Processing ${excelData.length} personalized messages in optimized loops. Job ID: ${result.jobId}. Track progress in real-time with reduced server load.`,
           variant: "default"
         });
         

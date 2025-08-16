@@ -9,7 +9,6 @@ const bulkQueue_1 = require("../services/bulkQueue");
 const bulkRepos_1 = require("../repos/bulkRepos");
 const bulkSSE_1 = require("../services/bulkSSE");
 const logger_1 = require("../utils/logger");
-const template_helper_1 = require("../utils/template-helper");
 const db_1 = __importDefault(require("../db"));
 const router = (0, express_1.Router)();
 const bulkQueue = new bulkQueue_1.BulkQueue(bulkRepos_1.userBusinessRepo, bulkRepos_1.bulkCampaignLogsRepo, (jobId, payload) => bulkSSE_1.bulkSSE.emit(jobId, payload));
@@ -83,7 +82,7 @@ router.post('/bulk-quick-send', bulkRateLimit, requireAuth, async (req, res) => 
                         status: template.status,
                         components: template.components || []
                     };
-                    templateComponents = (0, template_helper_1.buildTemplatePayload)(template_name, language, templateInfo.components, variables);
+                    templateComponents = templateInfo.components;
                 }
             }
             catch (error) {

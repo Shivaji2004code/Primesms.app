@@ -16,6 +16,7 @@ BEGIN
         RAISE NOTICE '✅ Added app_secret column to user_business_info table';
     ELSE
         RAISE NOTICE '✅ app_secret column already exists in user_business_info table';
+        
     END IF;
 END $$;
 

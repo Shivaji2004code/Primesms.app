@@ -41,6 +41,193 @@ export class UserBusinessRepo implements CredsProvider {
 }
 
 export class BulkCampaignLogsRepo implements CampaignLogsRepo {
+  async createCampaignLogEntry(
+    userId: string, 
+    to: string, 
+    campaignId: string, 
+    templateName: string, 
+    phoneNumberId: string, 
+    language: string, 
+    variables?: any, 
+    components?: any
+  ): Promise<string> {
+    try {
+      const cleanRecipient = to?.toString().trim();
+      if (!cleanRecipient) {
+        throw new Error('Empty recipient provided');
+      }
+
+      const campaignData = {
+        source: 'bulk',
+        variables,
+        template_components: components,
+        timestamp: new Date().toISOString()
+      };
+
+      const insertQuery = `
+        INSERT INTO campaign_logs (
+          user_id, 
+          campaign_name, 
+          template_used,
+          phone_number_id,
+          recipient_number, 
+          language_code,
+          status, 
+          campaign_data,
+          created_at, 
+          updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING id
+      `;
+      
+      const result = await pool.query(insertQuery, [
+        userId,
+        campaignId,
+        templateName,
+        phoneNumberId,
+        cleanRecipient,
+        language,
+        campaignData
+      ]);
+      
+      const logId = result.rows[0].id;
+      
+      logger.debug('[BULK-REPO] Campaign log entry created', {
+        userId,
+        logId,
+        recipient: cleanRecipient,
+        campaignId,
+        templateName
+      });
+      
+      return logId.toString();
+      
+    } catch (error) {
+      logger.error('[BULK-REPO] Failed to create campaign log entry', {
+        userId,
+        to,
+        campaignId,
+        templateName,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+
+  async updateCampaignLogStatus(
+    logId: string, 
+    status: 'sent' | 'failed', 
+    messageId?: string, 
+    errorMessage?: string
+  ): Promise<void> {
+    try {
+      const updateQuery = `
+        UPDATE campaign_logs 
+        SET 
+          status = $1,
+          message_id = $2,
+          error_message = $3,
+          sent_at = CASE WHEN $1 = 'sent' THEN CURRENT_TIMESTAMP ELSE sent_at END,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4
+      `;
+      
+      await pool.query(updateQuery, [
+        status,
+        messageId || null,
+        errorMessage || null,
+        logId
+      ]);
+      
+      logger.debug('[BULK-REPO] Campaign log status updated', {
+        logId,
+        status,
+        messageId,
+        hasError: !!errorMessage
+      });
+      
+    } catch (error) {
+      logger.error('[BULK-REPO] Failed to update campaign log status', {
+        logId,
+        status,
+        messageId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+
+  async updateCampaignLogByMessageId(
+    userId: string,
+    messageId: string,
+    status: 'sent' | 'delivered' | 'read' | 'failed',
+    timestamp?: Date,
+    errorMessage?: string
+  ): Promise<boolean> {
+    try {
+      let updateQuery = '';
+      let params: any[] = [];
+
+      if (status === 'sent') {
+        updateQuery = `
+          UPDATE campaign_logs 
+          SET status = $1, sent_at = COALESCE(sent_at, $2), updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $3 AND message_id = $4`;
+        params = [status, timestamp || new Date(), userId, messageId];
+      } else if (status === 'delivered') {
+        updateQuery = `
+          UPDATE campaign_logs 
+          SET status = $1, delivered_at = COALESCE(delivered_at, $2), updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $3 AND message_id = $4`;
+        params = [status, timestamp || new Date(), userId, messageId];
+      } else if (status === 'read') {
+        updateQuery = `
+          UPDATE campaign_logs 
+          SET status = $1, read_at = COALESCE(read_at, $2), updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $3 AND message_id = $4`;
+        params = [status, timestamp || new Date(), userId, messageId];
+      } else if (status === 'failed') {
+        updateQuery = `
+          UPDATE campaign_logs 
+          SET status = $1, error_message = $2, updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $3 AND message_id = $4`;
+        params = [status, errorMessage || 'Message failed', userId, messageId];
+      }
+
+      if (updateQuery) {
+        const result = await pool.query(updateQuery, params);
+        
+        if (result.rowCount && result.rowCount > 0) {
+          logger.debug('[BULK-REPO] Campaign log updated by webhook', {
+            userId,
+            messageId,
+            status,
+            timestamp: timestamp?.toISOString()
+          });
+          return true;
+        } else {
+          logger.warn('[BULK-REPO] No campaign log found for webhook update', {
+            userId,
+            messageId,
+            status
+          });
+          return false;
+        }
+      }
+      
+      return false;
+      
+    } catch (error) {
+      logger.error('[BULK-REPO] Failed to update campaign log by messageId', {
+        userId,
+        messageId,
+        status,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return false;
+    }
+  }
   async upsertOnSendAck(
     userId: string, 
     messageId: string, 

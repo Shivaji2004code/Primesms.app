@@ -39,6 +39,8 @@ export interface CredsProvider {
 }
 export interface CampaignLogsRepo {
     upsertOnSendAck(userId: string, messageId: string, to: string, campaignId?: string | null, meta?: any): Promise<void>;
+    createCampaignLogEntry(userId: string, to: string, campaignId: string, templateName: string, phoneNumberId: string, language: string, variables?: any, components?: any): Promise<string>;
+    updateCampaignLogStatus(logId: string, status: 'sent' | 'failed', messageId?: string, errorMessage?: string): Promise<void>;
 }
 export type SSEEmitter = (jobId: string, payload: any) => void;
 export declare class BulkQueue {
@@ -50,7 +52,7 @@ export declare class BulkQueue {
     enqueue(input: BulkJobInput): BulkJob;
     getJob(jobId: string): BulkJob | null;
     private processJob;
-    private processBatch;
+    private processLoop;
     private sendSingleMessage;
 }
 //# sourceMappingURL=bulkQueue.d.ts.map

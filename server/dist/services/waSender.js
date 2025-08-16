@@ -6,29 +6,109 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendWhatsAppMessage = sendWhatsAppMessage;
 const axios_1 = __importDefault(require("axios"));
 const logger_1 = require("../utils/logger");
-const template_helper_1 = require("../utils/template-helper");
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 function processTemplateComponents(components, variables) {
     if (!components || components.length === 0) {
-        return (0, template_helper_1.buildTemplatePayload)('', '', [], variables);
+        return [];
     }
-    return components.map(component => {
-        if (component.parameters) {
-            const processedParameters = component.parameters.map((param) => {
-                if (param.type === 'text' && param.text && variables) {
-                    const variableKey = param.text;
-                    if (variables[variableKey]) {
-                        return { ...param, text: variables[variableKey] };
+    const templateComponents = [];
+    for (const component of components) {
+        if (component.type === 'HEADER') {
+            if (component.format === 'IMAGE') {
+                const hasVariableInText = component.text && component.text.includes('{{');
+                if (hasVariableInText) {
+                    const matches = component.text.match(/\{\{(\d+)\}\}/g);
+                    if (matches && matches.length > 0) {
+                        const variableIndex = parseInt(matches[0].replace(/[{}]/g, ''));
+                        const imageUrl = variables[variableIndex.toString()];
+                        if (imageUrl) {
+                            templateComponents.push({
+                                type: "header",
+                                parameters: [{
+                                        type: "image",
+                                        image: {
+                                            link: imageUrl
+                                        }
+                                    }]
+                            });
+                        }
                     }
                 }
-                return param;
-            });
-            return { ...component, parameters: processedParameters };
+            }
+            else if (component.text && component.text.includes('{{')) {
+                const headerParams = [];
+                const matches = component.text.match(/\{\{(\d+)\}\}/g);
+                if (matches) {
+                    matches.forEach((match) => {
+                        const variableIndex = parseInt(match.replace(/[{}]/g, ''));
+                        if (variables[variableIndex.toString()]) {
+                            headerParams.push({
+                                type: "text",
+                                text: variables[variableIndex.toString()]
+                            });
+                        }
+                    });
+                }
+                if (headerParams.length > 0) {
+                    templateComponents.push({
+                        type: "header",
+                        parameters: headerParams
+                    });
+                }
+            }
         }
-        return component;
-    });
+        else if (component.type === 'BODY' && component.text) {
+            const matches = component.text.match(/\{\{(\d+)\}\}/g);
+            if (matches) {
+                const bodyParams = [];
+                matches.forEach((match) => {
+                    const variableIndex = parseInt(match.replace(/[{}]/g, ''));
+                    if (variables[variableIndex.toString()]) {
+                        bodyParams.push({
+                            type: "text",
+                            text: variables[variableIndex.toString()]
+                        });
+                    }
+                });
+                if (bodyParams.length > 0) {
+                    templateComponents.push({
+                        type: "body",
+                        parameters: bodyParams
+                    });
+                }
+            }
+        }
+        else if (component.type === 'BUTTONS' && component.buttons) {
+            component.buttons.forEach((button, buttonIndex) => {
+                if (button.type === 'URL' && button.url && button.url.includes('{{')) {
+                    const matches = button.url.match(/\{\{(\d+)\}\}/g);
+                    if (matches) {
+                        const buttonParams = [];
+                        matches.forEach((match) => {
+                            const variableIndex = parseInt(match.replace(/[{}]/g, ''));
+                            if (variables[variableIndex.toString()]) {
+                                buttonParams.push({
+                                    type: "text",
+                                    text: variables[variableIndex.toString()]
+                                });
+                            }
+                        });
+                        if (buttonParams.length > 0) {
+                            templateComponents.push({
+                                type: "button",
+                                sub_type: "url",
+                                index: buttonIndex.toString(),
+                                parameters: buttonParams
+                            });
+                        }
+                    }
+                }
+            });
+        }
+    }
+    return templateComponents;
 }
 async function sendWhatsAppMessage(opts) {
     const { version = process.env.GRAPH_API_VERSION || 'v22.0', accessToken, phoneNumberId, to, message, variables = {}, maxRetries = parseInt(process.env.BULK_MAX_RETRIES || '3', 10), retryBaseMs = parseInt(process.env.BULK_RETRY_BASE_MS || '500', 10), } = opts;

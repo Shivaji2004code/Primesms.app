@@ -45,29 +45,114 @@ function sleep(ms: number): Promise<void> {
 
 function processTemplateComponents(components: any[], variables: BulkMessageVariables): any[] {
   if (!components || components.length === 0) {
-    // If no pre-built components, use buildTemplatePayload to create them
-    return buildTemplatePayload('', '', [], variables);
+    return [];
   }
   
-  return components.map(component => {
-    if (component.parameters) {
-      // Replace parameters with dynamic values from variables
-      const processedParameters = component.parameters.map((param: any) => {
-        if (param.type === 'text' && param.text && variables) {
-          // Check if the text is a variable key (like "1", "2", etc.)
-          const variableKey = param.text;
-          if (variables[variableKey]) {
-            return { ...param, text: variables[variableKey] };
+  const templateComponents: any[] = [];
+  
+  for (const component of components) {
+    if (component.type === 'HEADER') {
+      if (component.format === 'IMAGE') {
+        // Handle image headers - check if it's dynamic (has variables)
+        const hasVariableInText = component.text && component.text.includes('{{');
+        
+        if (hasVariableInText) {
+          // Dynamic image - extract variable for image URL
+          const matches = component.text.match(/\{\{(\d+)\}\}/g);
+          if (matches && matches.length > 0) {
+            const variableIndex = parseInt(matches[0].replace(/[{}]/g, ''));
+            const imageUrl = variables[variableIndex.toString()];
+            if (imageUrl) {
+              templateComponents.push({
+                type: "header",
+                parameters: [{
+                  type: "image",
+                  image: {
+                    link: imageUrl
+                  }
+                }]
+              });
+            }
           }
         }
-        return param;
+        // Static images don't need header components
+      } else if (component.text && component.text.includes('{{')) {
+        // Text header with variables
+        const headerParams: any[] = [];
+        const matches = component.text.match(/\{\{(\d+)\}\}/g);
+        if (matches) {
+          matches.forEach((match: string) => {
+            const variableIndex = parseInt(match.replace(/[{}]/g, ''));
+            if (variables[variableIndex.toString()]) {
+              headerParams.push({
+                type: "text",
+                text: variables[variableIndex.toString()]
+              });
+            }
+          });
+        }
+        
+        if (headerParams.length > 0) {
+          templateComponents.push({
+            type: "header",
+            parameters: headerParams
+          });
+        }
+      }
+    } else if (component.type === 'BODY' && component.text) {
+      // Handle body variables
+      const matches = component.text.match(/\{\{(\d+)\}\}/g);
+      if (matches) {
+        const bodyParams: any[] = [];
+        matches.forEach((match: string) => {
+          const variableIndex = parseInt(match.replace(/[{}]/g, ''));
+          if (variables[variableIndex.toString()]) {
+            bodyParams.push({
+              type: "text",
+              text: variables[variableIndex.toString()]
+            });
+          }
+        });
+        
+        if (bodyParams.length > 0) {
+          templateComponents.push({
+            type: "body",
+            parameters: bodyParams
+          });
+        }
+      }
+    } else if (component.type === 'BUTTONS' && component.buttons) {
+      // Handle button variables (dynamic URLs)
+      component.buttons.forEach((button: any, buttonIndex: number) => {
+        if (button.type === 'URL' && button.url && button.url.includes('{{')) {
+          const matches = button.url.match(/\{\{(\d+)\}\}/g);
+          if (matches) {
+            const buttonParams: any[] = [];
+            matches.forEach((match: string) => {
+              const variableIndex = parseInt(match.replace(/[{}]/g, ''));
+              if (variables[variableIndex.toString()]) {
+                buttonParams.push({
+                  type: "text",
+                  text: variables[variableIndex.toString()]
+                });
+              }
+            });
+            
+            if (buttonParams.length > 0) {
+              templateComponents.push({
+                type: "button",
+                sub_type: "url",
+                index: buttonIndex.toString(),
+                parameters: buttonParams
+              });
+            }
+          }
+        }
       });
-      
-      return { ...component, parameters: processedParameters };
     }
-    
-    return component;
-  });
+  }
+  
+  return templateComponents;
 }
 
 export async function sendWhatsAppMessage(opts: {

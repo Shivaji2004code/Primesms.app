@@ -665,7 +665,7 @@ export default function WhatsAppBulkMessaging() {
           show: true,
           type: 'success',
           title: 'Bulk campaign started successfully',
-          message: `Processing ${recipients.length} recipients in batches of ${data.batchSize || 50}. Job ID: ${data.jobId}. You can track progress in real-time.`
+          message: `Processing ${recipients.length} recipients in loops of ${data.batchSize || 200}. Job ID: ${data.jobId}. Server load optimized with controlled sending rate.`
         });
         
         // Reset form

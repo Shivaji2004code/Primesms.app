@@ -10,6 +10,7 @@ const db_1 = __importDefault(require("../db"));
 const waProcessors_1 = require("../services/waProcessors");
 const sseBroadcaster_1 = require("../services/sseBroadcaster");
 const n8nWebhookProcessor_1 = require("../services/n8nWebhookProcessor");
+const bulkRepos_1 = require("../repos/bulkRepos");
 async function getUserBusinessInfo(userId) {
     const client = await db_1.default.connect();
     try {
@@ -185,6 +186,15 @@ async function processStatusUpdates(ubi, statuses) {
                     }
                     else {
                         console.log(`⚠️  [WEBHOOK] No campaign found for message ID: ${id} user ${ubi.userId}`);
+                        try {
+                            const bulkUpdated = await bulkRepos_1.bulkCampaignLogsRepo.updateCampaignLogByMessageId(ubi.userId, id, statusValue, timestampValue, statusValue === 'failed' ? errorMessage : undefined);
+                            if (bulkUpdated) {
+                                console.log(`✅ [WEBHOOK] Updated bulk campaign status: ${id} -> ${statusValue} for user ${ubi.userId}`);
+                            }
+                        }
+                        catch (bulkError) {
+                            console.log(`⚠️  [WEBHOOK] Bulk campaign update also failed: ${bulkError}`);
+                        }
                         if (statusValue === 'failed') {
                             await client.query(`
                 INSERT INTO campaign_logs (

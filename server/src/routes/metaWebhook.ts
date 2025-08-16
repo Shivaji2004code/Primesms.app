@@ -6,6 +6,7 @@ import pool from '../db';
 import { createProcessors } from '../services/waProcessors';
 import { sseHub } from '../services/sseBroadcaster';
 import { processWebhookForN8n } from '../services/n8nWebhookProcessor';
+import { bulkCampaignLogsRepo } from '../repos/bulkRepos';
 
 type AnyObj = Record<string, any>;
 
@@ -241,6 +242,23 @@ async function processStatusUpdates(ubi: UserBusinessInfo, statuses: any[]): Pro
             console.log(`✅ [WEBHOOK] Updated campaign status: ${id} -> ${statusValue} for user ${ubi.userId}`);
           } else {
             console.log(`⚠️  [WEBHOOK] No campaign found for message ID: ${id} user ${ubi.userId}`);
+            
+            // Try bulk campaign logs repo as well for faster access
+            try {
+              const bulkUpdated = await bulkCampaignLogsRepo.updateCampaignLogByMessageId(
+                ubi.userId,
+                id,
+                statusValue as 'sent' | 'delivered' | 'read' | 'failed',
+                timestampValue,
+                statusValue === 'failed' ? errorMessage : undefined
+              );
+              
+              if (bulkUpdated) {
+                console.log(`✅ [WEBHOOK] Updated bulk campaign status: ${id} -> ${statusValue} for user ${ubi.userId}`);
+              }
+            } catch (bulkError) {
+              console.log(`⚠️  [WEBHOOK] Bulk campaign update also failed: ${bulkError}`);
+            }
             
             // Create campaign_logs entry if webhook arrives before send confirmation
             if (statusValue === 'failed') {

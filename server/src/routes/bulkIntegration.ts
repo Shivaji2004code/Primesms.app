@@ -121,13 +121,8 @@ router.post('/bulk-quick-send', bulkRateLimit, requireAuth, async (req: Request,
             components: template.components || []
           };
           
-          // Build template components using existing helper
-          templateComponents = buildTemplatePayload(
-            template_name,
-            language,
-            templateInfo.components,
-            variables
-          );
+          // Get the base template components - not build the full payload
+          templateComponents = templateInfo.components;
         }
       } catch (error) {
         logger.error('[BULK-INTEGRATION] Failed to fetch template details', { error, template_name, userId: authenticatedUserId });
@@ -266,7 +261,6 @@ router.post('/bulk-customize-send', bulkRateLimit, requireAuth, async (req: Requ
             components: template.components || []
           };
           
-          // For customize, we'll build template components per recipient
           // Store the base template structure for the bulk processor
           templateComponents = templateInfo.components;
         }
