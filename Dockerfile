@@ -44,6 +44,7 @@ COPY --from=client-builder /app/client/dist ./dist/client-static
 
 # Copy database migration files for initialization
 COPY migration_add_app_secret.sql ./
+COPY migration_fix_campaign_logs_constraints.sql ./
 COPY database_schema.sql ./
 
 # Create uploads directory

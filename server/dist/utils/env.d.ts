@@ -16,12 +16,15 @@ interface OptionalEnvVars {
     MAX_JSON_SIZE?: string;
     TRUST_PROXY?: string;
     GRAPH_API_VERSION?: string;
-    BULK_BATCH_SIZE?: string;
-    BULK_CONCURRENCY?: string;
-    BULK_PAUSE_MS?: string;
+    BULK_LOOP_SIZE?: string;
+    BULK_LOOP_PAUSE_MS?: string;
+    BULK_MESSAGES_PER_SECOND?: string;
     BULK_MAX_RETRIES?: string;
     BULK_RETRY_BASE_MS?: string;
     BULK_HARD_CAP?: string;
+    BULK_BATCH_SIZE?: string;
+    BULK_CONCURRENCY?: string;
+    BULK_PAUSE_MS?: string;
 }
 declare class EnvValidator {
     private requiredVars;
@@ -52,6 +55,9 @@ declare class EnvValidator {
     get trustProxy(): number;
     get bulkMessaging(): {
         graphApiVersion: string;
+        loopSize: number;
+        loopPauseMs: number;
+        messagesPerSecond: number;
         batchSize: number;
         concurrency: number;
         pauseMs: number;

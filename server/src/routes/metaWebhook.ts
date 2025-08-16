@@ -193,18 +193,18 @@ async function processStatusUpdates(ubi: UserBusinessInfo, statuses: any[]): Pro
         if (statusValue === 'sent') {
           updateQuery = `
             UPDATE campaign_logs 
-            SET status = $1, sent_at = COALESCE(sent_at, $2), updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $3 AND message_id = $4`;
+            SET status = $1::VARCHAR, sent_at = COALESCE(sent_at, $2::TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
         } else if (statusValue === 'delivered') {
           updateQuery = `
             UPDATE campaign_logs 
-            SET status = $1, delivered_at = COALESCE(delivered_at, $2), updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $3 AND message_id = $4`;
+            SET status = $1::VARCHAR, delivered_at = COALESCE(delivered_at, $2::TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
         } else if (statusValue === 'read') {
           updateQuery = `
             UPDATE campaign_logs 
-            SET status = $1, read_at = COALESCE(read_at, $2), updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $3 AND message_id = $4`;
+            SET status = $1::VARCHAR, read_at = COALESCE(read_at, $2::TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
         } else if (statusValue === 'failed') {
           // Extract detailed error information from Meta API response
           errorMessage = 'Delivery failed';
@@ -227,8 +227,8 @@ async function processStatusUpdates(ubi: UserBusinessInfo, statuses: any[]): Pro
           
           updateQuery = `
             UPDATE campaign_logs 
-            SET status = $1, error_message = $2, updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $3 AND message_id = $4`;
+            SET status = $1::VARCHAR, error_message = $2::TEXT, updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
         }
         
         if (updateQuery) {
@@ -267,32 +267,34 @@ async function processStatusUpdates(ubi: UserBusinessInfo, statuses: any[]): Pro
                 INSERT INTO campaign_logs (
                   user_id, message_id, recipient_number, status, campaign_name, 
                   template_used, error_message, created_at, updated_at
-                ) VALUES ($1, $2, $3, $4, 'webhook_only', 'unknown', $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES ($1::UUID, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, 'webhook_only', 'unknown', $5::TEXT, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 ON CONFLICT (user_id, message_id) DO UPDATE SET
-                  status = $4,
-                  error_message = $5,
+                  status = EXCLUDED.status,
+                  error_message = EXCLUDED.error_message,
                   updated_at = CURRENT_TIMESTAMP
               `, [ubi.userId, id, recipient_id, statusValue, errorMessage]);
               
               console.log(`🔄 [WEBHOOK] Created failed campaign entry from webhook: ${id} - ${errorMessage}`);
             } else {
               // Handle other statuses (sent, delivered, read)
-              await client.query(`
+              const insertQuery = `
                 INSERT INTO campaign_logs (
                   user_id, message_id, recipient_number, status, campaign_name, 
                   template_used, sent_at, delivered_at, read_at, created_at, updated_at
-                ) VALUES ($1, $2, $3, $4, 'webhook_only', 'unknown', 
-                  ${statusValue === 'sent' ? '$5' : 'NULL'}, 
-                  ${statusValue === 'delivered' ? '$5' : 'NULL'},
-                  ${statusValue === 'read' ? '$5' : 'NULL'},
+                ) VALUES ($1::UUID, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, 'webhook_only', 'unknown', 
+                  ${statusValue === 'sent' ? '$5::TIMESTAMP' : 'NULL'}, 
+                  ${statusValue === 'delivered' ? '$5::TIMESTAMP' : 'NULL'},
+                  ${statusValue === 'read' ? '$5::TIMESTAMP' : 'NULL'},
                   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 ON CONFLICT (user_id, message_id) DO UPDATE SET
-                  status = $4,
-                  ${statusValue === 'sent' ? 'sent_at = COALESCE(campaign_logs.sent_at, $5),' : ''}
-                  ${statusValue === 'delivered' ? 'delivered_at = COALESCE(campaign_logs.delivered_at, $5),' : ''}
-                  ${statusValue === 'read' ? 'read_at = COALESCE(campaign_logs.read_at, $5),' : ''}
+                  status = EXCLUDED.status,
+                  ${statusValue === 'sent' ? 'sent_at = COALESCE(campaign_logs.sent_at, EXCLUDED.sent_at),' : ''}
+                  ${statusValue === 'delivered' ? 'delivered_at = COALESCE(campaign_logs.delivered_at, EXCLUDED.delivered_at),' : ''}
+                  ${statusValue === 'read' ? 'read_at = COALESCE(campaign_logs.read_at, EXCLUDED.read_at),' : ''}
                   updated_at = CURRENT_TIMESTAMP
-                `, [ubi.userId, id, recipient_id, statusValue, timestampValue]);
+              `;
+              
+              await client.query(insertQuery, [ubi.userId, id, recipient_id, statusValue, timestampValue]);
                 
               console.log(`🔄 [WEBHOOK] Created campaign entry from webhook: ${id}`);
             }

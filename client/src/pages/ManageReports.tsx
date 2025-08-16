@@ -590,19 +590,21 @@ export default function ManageReports() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[150px]">Campaign</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[120px]">Template</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[110px]">From</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[110px]">Recipient</th>
+                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[140px]">Campaign</th>
+                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[100px]">Template</th>
+                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[90px]">From</th>
+                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[90px]">Recipient</th>
                     <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[80px]">Status</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[120px]">Sent At</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[140px]">Error</th>
+                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[100px]">Sent At</th>
+                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[100px]">Delivered At</th>
+                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[100px]">Read At</th>
+                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[120px]">Error</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-8 px-4">
+                      <td colSpan={9} className="text-center py-8 px-4">
                         <div className="flex items-center justify-center">
                           <RefreshCw className="h-5 w-5 animate-spin text-green-600 mr-2" />
                           <span className="text-sm text-gray-600">Loading reports...</span>
@@ -611,7 +613,7 @@ export default function ManageReports() {
                     </tr>
                   ) : reports.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-8 px-4 text-gray-500">
+                      <td colSpan={9} className="text-center py-8 px-4 text-gray-500">
                         <div className="flex flex-col items-center">
                           <FileText className="h-10 w-10 text-gray-300 mb-2" />
                           <span className="text-sm">No reports found</span>
@@ -653,6 +655,22 @@ export default function ManageReports() {
                             <Calendar className="h-3 w-3 text-gray-400 flex-shrink-0" />
                             <span className="text-xs text-gray-900">
                               {formatDate(report.sent_at)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-green-400 flex-shrink-0" />
+                            <span className="text-xs text-gray-900">
+                              {formatDate(report.delivered_at)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-purple-400 flex-shrink-0" />
+                            <span className="text-xs text-gray-900">
+                              {formatDate(report.read_at)}
                             </span>
                           </div>
                         </td>

@@ -2036,9 +2036,12 @@ router.get('/reports', auth_1.requireAuth, async (req, res) => {
         COALESCE(ubi.whatsapp_number, cl.phone_number_id, 'Unknown') as from_number,
         COALESCE(NULLIF(TRIM(cl.recipient_number), ''), 'Not Available') as recipient_number,
         cl.status,
+        cl.status as read_status,
         cl.sent_at,
         cl.delivered_at,
+        cl.read_at,
         cl.error_message,
+        cl.message_id,
         cl.created_at,
         cl.updated_at
       FROM campaign_logs cl
@@ -2062,6 +2065,8 @@ router.get('/reports', auth_1.requireAuth, async (req, res) => {
                 'Status',
                 'Sent At',
                 'Delivered At',
+                'Read At',
+                'Message ID',
                 'Error Message'
             ];
             const rows = reportsResult.rows.map(row => [
@@ -2072,6 +2077,8 @@ router.get('/reports', auth_1.requireAuth, async (req, res) => {
                 row.status || '',
                 row.sent_at || '',
                 row.delivered_at || '',
+                row.read_at || '',
+                row.message_id || '',
                 row.error_message || ''
             ]);
             if (exportFormat === 'csv') {

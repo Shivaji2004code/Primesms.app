@@ -49,12 +49,15 @@ class EnvValidator {
             MAX_JSON_SIZE: process.env.MAX_JSON_SIZE || '100kb',
             TRUST_PROXY: process.env.TRUST_PROXY || '1',
             GRAPH_API_VERSION: process.env.GRAPH_API_VERSION || 'v22.0',
-            BULK_BATCH_SIZE: process.env.BULK_BATCH_SIZE || '50',
-            BULK_CONCURRENCY: process.env.BULK_CONCURRENCY || '5',
-            BULK_PAUSE_MS: process.env.BULK_PAUSE_MS || '1000',
+            BULK_LOOP_SIZE: process.env.BULK_LOOP_SIZE || '200',
+            BULK_LOOP_PAUSE_MS: process.env.BULK_LOOP_PAUSE_MS || '2000',
+            BULK_MESSAGES_PER_SECOND: process.env.BULK_MESSAGES_PER_SECOND || '10',
             BULK_MAX_RETRIES: process.env.BULK_MAX_RETRIES || '3',
             BULK_RETRY_BASE_MS: process.env.BULK_RETRY_BASE_MS || '500',
             BULK_HARD_CAP: process.env.BULK_HARD_CAP || '50000',
+            BULK_BATCH_SIZE: process.env.BULK_BATCH_SIZE || process.env.BULK_LOOP_SIZE || '200',
+            BULK_CONCURRENCY: process.env.BULK_CONCURRENCY || '1',
+            BULK_PAUSE_MS: process.env.BULK_PAUSE_MS || process.env.BULK_LOOP_PAUSE_MS || '2000',
         };
         this.validateFormats();
     }
@@ -126,9 +129,12 @@ class EnvValidator {
     get bulkMessaging() {
         return {
             graphApiVersion: this.optionalVars.GRAPH_API_VERSION || 'v22.0',
-            batchSize: parseInt(this.optionalVars.BULK_BATCH_SIZE || '50'),
-            concurrency: parseInt(this.optionalVars.BULK_CONCURRENCY || '5'),
-            pauseMs: parseInt(this.optionalVars.BULK_PAUSE_MS || '1000'),
+            loopSize: parseInt(this.optionalVars.BULK_LOOP_SIZE || '200'),
+            loopPauseMs: parseInt(this.optionalVars.BULK_LOOP_PAUSE_MS || '2000'),
+            messagesPerSecond: parseInt(this.optionalVars.BULK_MESSAGES_PER_SECOND || '10'),
+            batchSize: parseInt(this.optionalVars.BULK_BATCH_SIZE || this.optionalVars.BULK_LOOP_SIZE || '200'),
+            concurrency: parseInt(this.optionalVars.BULK_CONCURRENCY || '1'),
+            pauseMs: parseInt(this.optionalVars.BULK_PAUSE_MS || this.optionalVars.BULK_LOOP_PAUSE_MS || '2000'),
             maxRetries: parseInt(this.optionalVars.BULK_MAX_RETRIES || '3'),
             retryBaseMs: parseInt(this.optionalVars.BULK_RETRY_BASE_MS || '500'),
             hardCap: parseInt(this.optionalVars.BULK_HARD_CAP || '50000'),

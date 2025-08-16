@@ -77,7 +77,7 @@ export class BulkCampaignLogsRepo implements CampaignLogsRepo {
           created_at, 
           updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        VALUES ($1::UUID, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR, 'pending'::VARCHAR, $7::JSONB, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         RETURNING id
       `;
       
@@ -88,7 +88,7 @@ export class BulkCampaignLogsRepo implements CampaignLogsRepo {
         phoneNumberId,
         cleanRecipient,
         language,
-        campaignData
+        JSON.stringify(campaignData)
       ]);
       
       const logId = result.rows[0].id;
@@ -125,12 +125,12 @@ export class BulkCampaignLogsRepo implements CampaignLogsRepo {
       const updateQuery = `
         UPDATE campaign_logs 
         SET 
-          status = $1,
-          message_id = $2,
-          error_message = $3,
-          sent_at = CASE WHEN $1 = 'sent' THEN CURRENT_TIMESTAMP ELSE sent_at END,
+          status = $1::VARCHAR,
+          message_id = $2::VARCHAR,
+          error_message = $3::TEXT,
+          sent_at = CASE WHEN $1::VARCHAR = 'sent' THEN CURRENT_TIMESTAMP ELSE sent_at END,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $4
+        WHERE id = $4::UUID
       `;
       
       await pool.query(updateQuery, [
@@ -172,26 +172,26 @@ export class BulkCampaignLogsRepo implements CampaignLogsRepo {
       if (status === 'sent') {
         updateQuery = `
           UPDATE campaign_logs 
-          SET status = $1, sent_at = COALESCE(sent_at, $2), updated_at = CURRENT_TIMESTAMP
-          WHERE user_id = $3 AND message_id = $4`;
+          SET status = $1::VARCHAR, sent_at = COALESCE(sent_at, $2::TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
         params = [status, timestamp || new Date(), userId, messageId];
       } else if (status === 'delivered') {
         updateQuery = `
           UPDATE campaign_logs 
-          SET status = $1, delivered_at = COALESCE(delivered_at, $2), updated_at = CURRENT_TIMESTAMP
-          WHERE user_id = $3 AND message_id = $4`;
+          SET status = $1::VARCHAR, delivered_at = COALESCE(delivered_at, $2::TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
         params = [status, timestamp || new Date(), userId, messageId];
       } else if (status === 'read') {
         updateQuery = `
           UPDATE campaign_logs 
-          SET status = $1, read_at = COALESCE(read_at, $2), updated_at = CURRENT_TIMESTAMP
-          WHERE user_id = $3 AND message_id = $4`;
+          SET status = $1::VARCHAR, read_at = COALESCE(read_at, $2::TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
         params = [status, timestamp || new Date(), userId, messageId];
       } else if (status === 'failed') {
         updateQuery = `
           UPDATE campaign_logs 
-          SET status = $1, error_message = $2, updated_at = CURRENT_TIMESTAMP
-          WHERE user_id = $3 AND message_id = $4`;
+          SET status = $1::VARCHAR, error_message = $2::TEXT, updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
         params = [status, errorMessage || 'Message failed', userId, messageId];
       }
 
