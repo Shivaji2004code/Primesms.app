@@ -593,8 +593,8 @@ export default function CustomizeMessage() {
         console.log('Bulk send result:', result);
         
         toast({
-          title: "Bulk custom messages started successfully",
-          description: `Processing ${excelData.length} personalized messages in optimized loops. Job ID: ${result.jobId}. Track progress in real-time with reduced server load.`,
+          title: "Bulk custom messages sent successfully",
+          description: `Processed ${excelData.length} personalized messages using 200-message batching with 1-second delays. ${result.data?.successful_sends || 0} successful, ${result.data?.failed_sends || 0} failed.`,
           variant: "default"
         });
         

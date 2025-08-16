@@ -2421,5 +2421,214 @@ router.post('/send-custom-messages', auth_1.requireAuth, async (req, res) => {
         });
     }
 });
+router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        const { templateName, language, wabaId, data, campaignName } = req.body;
+        console.log(`🚀 BULK-CUSTOMIZE-SEND: Starting custom bulk send for user ${userId}`);
+        console.log(`📊 Template: ${templateName}, Language: ${language}, Recipients: ${data?.length || 0}`);
+        if (!templateName || !language || !wabaId || !data || !Array.isArray(data)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: templateName, language, wabaId, or data array'
+            });
+        }
+        if (data.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'No recipient data provided'
+            });
+        }
+        const validRecipients = [];
+        const errors = [];
+        for (const entry of data) {
+            if (!entry.phone) {
+                errors.push(`Missing phone number for entry: ${JSON.stringify(entry)}`);
+                continue;
+            }
+            const cleanedPhone = entry.phone.toString().replace(/\D/g, '');
+            if (cleanedPhone.length >= 10) {
+                validRecipients.push({
+                    ...entry,
+                    phone: cleanedPhone
+                });
+            }
+            else {
+                errors.push(`Invalid phone number: ${entry.phone}`);
+            }
+        }
+        if (validRecipients.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'No valid phone numbers provided',
+                details: errors
+            });
+        }
+        console.log(`📱 BULK-CUSTOMIZE-SEND: ${validRecipients.length} valid recipients, ${errors.length} errors`);
+        try {
+            const creditCheck = await (0, creditSystem_1.preCheckCreditsForBulk)(userId, templateName, validRecipients.length);
+            if (!creditCheck.sufficient) {
+                return res.status(400).json({
+                    success: false,
+                    error: `Insufficient credits. Required: ${creditCheck.requiredCredits.toFixed(2)}, Available: ${creditCheck.currentBalance.toFixed(2)}`,
+                    details: {
+                        requiredCredits: creditCheck.requiredCredits,
+                        currentBalance: creditCheck.currentBalance,
+                        templateCategory: creditCheck.category
+                    }
+                });
+            }
+            console.log(`[CREDIT SYSTEM] Pre-check passed: ${creditCheck.requiredCredits} credits required for ${validRecipients.length} ${creditCheck.category} messages`);
+        }
+        catch (creditError) {
+            console.error('Credit pre-check error:', creditError);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to check credit balance'
+            });
+        }
+        const numberResult = await db_1.default.query('SELECT access_token, business_name FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true', [userId, wabaId]);
+        if (numberResult.rows.length === 0) {
+            return res.status(403).json({
+                success: false,
+                error: 'WhatsApp number not found or access denied'
+            });
+        }
+        const { access_token } = numberResult.rows[0];
+        const templateResult = await db_1.default.query('SELECT components, header_media_id, header_type, header_media_url, header_handle, media_id, category FROM templates WHERE user_id = $1 AND name = $2 AND language = $3', [userId, templateName, language]);
+        if (templateResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Template not found'
+            });
+        }
+        const campaignNameFinal = campaignName || `Custom Campaign - ${templateName} - ${new Date().toISOString()}`;
+        const campaignEntries = [];
+        for (const recipientData of validRecipients) {
+            try {
+                const result = await db_1.default.query(`INSERT INTO campaign_logs 
+           (user_id, phone_number_id, template_name, language, recipient, 
+            variables, status, campaign_name, created_at, updated_at) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) 
+           RETURNING id`, [
+                    userId,
+                    wabaId,
+                    templateName,
+                    language,
+                    recipientData.phone,
+                    JSON.stringify(recipientData),
+                    'pending',
+                    campaignNameFinal
+                ]);
+                campaignEntries.push({
+                    id: result.rows[0].id,
+                    recipient: recipientData.phone,
+                    variables: recipientData
+                });
+            }
+            catch (dbError) {
+                console.error(`Database error for recipient ${recipientData.phone}:`, dbError);
+                const errorMessage = dbError instanceof Error ? dbError.message : 'Unknown database error';
+                errors.push(`Database error for ${recipientData.phone}: ${errorMessage}`);
+            }
+        }
+        if (campaignEntries.length === 0) {
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to create campaign entries',
+                details: errors
+            });
+        }
+        console.log(`💾 BULK-CUSTOMIZE-SEND: Created ${campaignEntries.length} campaign entries`);
+        console.log(`🚀 BULK-CUSTOMIZE-SEND: Starting to send ${campaignEntries.length} messages in batches of 200`);
+        let successCount = 0;
+        let failCount = 0;
+        const BATCH_SIZE = 200;
+        const batches = [];
+        for (let i = 0; i < campaignEntries.length; i += BATCH_SIZE) {
+            batches.push(campaignEntries.slice(i, i + BATCH_SIZE));
+        }
+        console.log(`📦 BULK-CUSTOMIZE-SEND: Processing ${batches.length} batches of up to ${BATCH_SIZE} messages each`);
+        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+            const batch = batches[batchIndex];
+            console.log(`📤 BULK-CUSTOMIZE-SEND: Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} messages)`);
+            const batchPromises = batch.map(campaignEntry => sendTemplateMessage(wabaId, access_token, campaignEntry.recipient, templateName, language, campaignEntry.variables, templateResult.rows[0].components, campaignEntry.id.toString(), userId, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].header_media_url, templateResult.rows[0].header_handle, templateResult.rows[0].media_id, templateResult.rows[0].category));
+            const batchResults = await Promise.allSettled(batchPromises);
+            batchResults.forEach((result, index) => {
+                const campaignEntry = batch[index];
+                if (result.status === 'fulfilled') {
+                    const response = result.value;
+                    if (response?.success === false && response?.duplicate) {
+                        console.log(`🚨 BULK-CUSTOMIZE-SEND BATCH ${batchIndex + 1}: Duplicate detected for ${campaignEntry.recipient}`);
+                        failCount++;
+                    }
+                    else if (response?.success) {
+                        console.log(`✅ BULK-CUSTOMIZE-SEND BATCH ${batchIndex + 1}: Successfully sent to ${campaignEntry.recipient}`);
+                        successCount++;
+                    }
+                    else {
+                        console.log(`⚠️ BULK-CUSTOMIZE-SEND BATCH ${batchIndex + 1}: Unknown response for ${campaignEntry.recipient}:`, response);
+                        failCount++;
+                    }
+                }
+                else {
+                    console.log(`❌ BULK-CUSTOMIZE-SEND BATCH ${batchIndex + 1}: Promise rejected for ${campaignEntry.recipient}:`, result.reason);
+                    failCount++;
+                }
+            });
+            console.log(`✅ BULK-CUSTOMIZE-SEND: Batch ${batchIndex + 1}/${batches.length} completed. Running totals: ${successCount} success, ${failCount} failed`);
+            if (batchIndex < batches.length - 1) {
+                console.log(`⏳ BULK-CUSTOMIZE-SEND: Waiting 1 second before next batch...`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+        console.log(`📊 BULK-CUSTOMIZE-SEND COMPLETED: ${successCount} successful, ${failCount} failed`);
+        let creditDeductionSuccess = false;
+        let creditBalance = 0;
+        if (successCount > 0) {
+            try {
+                const { cost, category } = await (0, creditSystem_1.calculateCreditCost)(userId, templateName, successCount);
+                const creditResult = await (0, creditSystem_1.deductCredits)({
+                    userId,
+                    amount: cost,
+                    transactionType: creditSystem_1.CreditTransactionType.DEDUCTION_CUSTOMISE_SMS,
+                    templateCategory: category,
+                    templateName: templateName,
+                    description: `Bulk customize campaign: ${campaignNameFinal} (${successCount} successful sends)`
+                });
+                if (creditResult.success) {
+                    creditDeductionSuccess = true;
+                    creditBalance = creditResult.newBalance;
+                    console.log(`[CREDIT SYSTEM] Deducted ${cost} credits for bulk customize. New balance: ${creditBalance}`);
+                }
+            }
+            catch (creditError) {
+                console.error('Credit deduction error:', creditError);
+            }
+        }
+        res.json({
+            success: true,
+            data: {
+                campaign_id: null,
+                total_recipients: validRecipients.length,
+                successful_sends: successCount,
+                failed_sends: failCount,
+                status: 'completed',
+                errors: errors.slice(0, 10),
+                creditInfo: {
+                    deducted: creditDeductionSuccess,
+                    newBalance: creditBalance
+                }
+            }
+        });
+    }
+    catch (error) {
+        console.error('Error sending bulk custom messages:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to send bulk custom messages'
+        });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=whatsapp.js.map
