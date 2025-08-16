@@ -4,11 +4,10 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && npm run copy:client",
-    "build:dev": "tsc && npm run build:client && npm run copy:client",
+    "build": "npm run build:client && tsc && npm run copy:client",
+    "build:dev": "npm run build:client && tsc && npm run copy:client",
     "build:client": "npm --prefix ../client install && npm --prefix ../client run build",
     "copy:client": "rm -rf dist/client-static && mkdir -p dist/client-static && cp -r client-build/* dist/client-static/",
-    "copy:client:dev": "rm -rf dist/client-static && mkdir -p dist/client-static && cp -r ../client/dist/* dist/client-static/",
     "start": "node dist/index.js",
     "start:prod": "pm2 start ecosystem.config.js",
     "dev": "nodemon src/index.ts",

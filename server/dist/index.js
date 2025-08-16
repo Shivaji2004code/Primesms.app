@@ -31,8 +31,6 @@ const sseRoutes_1 = __importDefault(require("./routes/sseRoutes"));
 const templatesSync_1 = __importDefault(require("./routes/templatesSync"));
 const templatesDebug_1 = __importDefault(require("./routes/templatesDebug"));
 const templatesSyncDirect_1 = __importDefault(require("./routes/templatesSyncDirect"));
-const bulk_1 = __importDefault(require("./routes/bulk"));
-const bulkIntegration_1 = __importDefault(require("./routes/bulkIntegration"));
 const auth_2 = require("./middleware/auth");
 const rateLimit_1 = require("./config/rateLimit");
 (0, errorHandler_1.setupGlobalErrorHandlers)();
@@ -184,9 +182,6 @@ if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEBUG_ROUTES ===
 }
 app.use('/api/whatsapp', rateLimit_1.writeLimiter, whatsapp_1.default);
 app.use('/api/send', rateLimit_1.writeLimiter, send_1.default);
-app.use('/api/whatsapp', rateLimit_1.writeLimiter, bulkIntegration_1.default);
-app.use('/api/bulk', bulk_1.default);
-app.use('/realtime/bulk', bulk_1.default);
 app.use('/api', sseRoutes_1.default);
 app.get('/api', (req, res) => {
     res.json({

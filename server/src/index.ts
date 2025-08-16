@@ -38,8 +38,6 @@ import sseRouter from './routes/sseRoutes';
 import templatesSyncRouter from './routes/templatesSync';
 import templatesDebugRouter from './routes/templatesDebug';
 import templatesSyncDirectRouter from './routes/templatesSyncDirect';
-import bulkRouter from './routes/bulk';
-import bulkIntegrationRouter from './routes/bulkIntegration';
 
 // Import middleware
 import { requireAuthWithRedirect } from './middleware/auth';
@@ -292,12 +290,6 @@ if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEBUG_ROUTES ===
 app.use('/api/whatsapp', writeLimiter, whatsappRoutes);
 app.use('/api/send', writeLimiter, sendRoutes);
 
-// Bulk messaging integration routes (extends existing WhatsApp functionality)
-app.use('/api/whatsapp', writeLimiter, bulkIntegrationRouter);
-
-// Bulk messaging routes (includes both API and SSE endpoints)
-app.use('/api/bulk', bulkRouter);
-app.use('/realtime/bulk', bulkRouter);
 
 // SSE routes for real-time updates (no rate limiting for persistent connections)
 app.use('/api', sseRouter);

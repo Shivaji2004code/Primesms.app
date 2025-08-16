@@ -10,7 +10,6 @@ const db_1 = __importDefault(require("../db"));
 const waProcessors_1 = require("../services/waProcessors");
 const sseBroadcaster_1 = require("../services/sseBroadcaster");
 const n8nWebhookProcessor_1 = require("../services/n8nWebhookProcessor");
-const bulkRepos_1 = require("../repos/bulkRepos");
 async function getUserBusinessInfo(userId) {
     const client = await db_1.default.connect();
     try {
@@ -142,19 +141,19 @@ async function processStatusUpdates(ubi, statuses) {
                     updateQuery = `
             UPDATE campaign_logs 
             SET status = $1::VARCHAR, sent_at = COALESCE(sent_at, $2::TIMESTAMP), updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
+            WHERE user_id = $3::INTEGER AND message_id = $4::VARCHAR`;
                 }
                 else if (statusValue === 'delivered') {
                     updateQuery = `
             UPDATE campaign_logs 
             SET status = $1::VARCHAR, delivered_at = COALESCE(delivered_at, $2::TIMESTAMP), updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
+            WHERE user_id = $3::INTEGER AND message_id = $4::VARCHAR`;
                 }
                 else if (statusValue === 'read') {
                     updateQuery = `
             UPDATE campaign_logs 
             SET status = $1::VARCHAR, read_at = COALESCE(read_at, $2::TIMESTAMP), updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
+            WHERE user_id = $3::INTEGER AND message_id = $4::VARCHAR`;
                 }
                 else if (statusValue === 'failed') {
                     errorMessage = 'Delivery failed';
@@ -174,7 +173,7 @@ async function processStatusUpdates(ubi, statuses) {
                     updateQuery = `
             UPDATE campaign_logs 
             SET status = $1::VARCHAR, error_message = $2::TEXT, updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = $3::UUID AND message_id = $4::VARCHAR`;
+            WHERE user_id = $3::INTEGER AND message_id = $4::VARCHAR`;
                 }
                 if (updateQuery) {
                     const params = statusValue === 'failed'
@@ -186,22 +185,13 @@ async function processStatusUpdates(ubi, statuses) {
                     }
                     else {
                         console.log(`⚠️  [WEBHOOK] No campaign found for message ID: ${id} user ${ubi.userId}`);
-                        try {
-                            const bulkUpdated = await bulkRepos_1.bulkCampaignLogsRepo.updateCampaignLogByMessageId(ubi.userId, id, statusValue, timestampValue, statusValue === 'failed' ? errorMessage : undefined);
-                            if (bulkUpdated) {
-                                console.log(`✅ [WEBHOOK] Updated bulk campaign status: ${id} -> ${statusValue} for user ${ubi.userId}`);
-                            }
-                        }
-                        catch (bulkError) {
-                            console.log(`⚠️  [WEBHOOK] Bulk campaign update also failed: ${bulkError}`);
-                        }
                         if (statusValue === 'failed') {
                             await client.query(`
                 INSERT INTO campaign_logs (
                   user_id, message_id, recipient_number, status, campaign_name, 
                   template_used, error_message, created_at, updated_at
-                ) VALUES ($1::UUID, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, 'webhook_only', 'unknown', $5::TEXT, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                ON CONFLICT (user_id, message_id) DO UPDATE SET
+                ) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, 'webhook_only', 'unknown', $5::TEXT, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT ON CONSTRAINT campaign_logs_user_message_unique DO UPDATE SET
                   status = EXCLUDED.status,
                   error_message = EXCLUDED.error_message,
                   updated_at = CURRENT_TIMESTAMP
@@ -213,12 +203,12 @@ async function processStatusUpdates(ubi, statuses) {
                 INSERT INTO campaign_logs (
                   user_id, message_id, recipient_number, status, campaign_name, 
                   template_used, sent_at, delivered_at, read_at, created_at, updated_at
-                ) VALUES ($1::UUID, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, 'webhook_only', 'unknown', 
+                ) VALUES ($1::INTEGER, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, 'webhook_only', 'unknown', 
                   ${statusValue === 'sent' ? '$5::TIMESTAMP' : 'NULL'}, 
                   ${statusValue === 'delivered' ? '$5::TIMESTAMP' : 'NULL'},
                   ${statusValue === 'read' ? '$5::TIMESTAMP' : 'NULL'},
                   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                ON CONFLICT (user_id, message_id) DO UPDATE SET
+                ON CONFLICT ON CONSTRAINT campaign_logs_user_message_unique DO UPDATE SET
                   status = EXCLUDED.status,
                   ${statusValue === 'sent' ? 'sent_at = COALESCE(campaign_logs.sent_at, EXCLUDED.sent_at),' : ''}
                   ${statusValue === 'delivered' ? 'delivered_at = COALESCE(campaign_logs.delivered_at, EXCLUDED.delivered_at),' : ''}

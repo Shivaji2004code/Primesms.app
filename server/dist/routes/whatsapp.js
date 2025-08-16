@@ -1159,36 +1159,48 @@ router.post('/quick-send', auth_1.requireAuth, upload.single('headerImage'), asy
                 details: creditError instanceof Error ? creditError.message : 'Unknown error'
             });
         }
-        console.log(`🚀 QUICK-SEND: Starting to send ${campaignEntries.length} messages`);
+        console.log(`🚀 QUICK-SEND: Starting to send ${campaignEntries.length} messages in batches of 200`);
         let successCount = 0;
         let failCount = 0;
-        const messagePromises = [];
-        for (const campaignEntry of campaignEntries) {
-            const messagePromise = sendTemplateMessage(phone_number_id, access_token, campaignEntry.recipient, template_name, language, variables, templateResult.rows[0].components, campaignEntry.id.toString(), userId, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].header_media_url, templateResult.rows[0].header_handle, uploadedImageMediaId || templateResult.rows[0].media_id, templateResult.rows[0].category);
-            messagePromises.push(messagePromise);
+        const BATCH_SIZE = 200;
+        const batches = [];
+        for (let i = 0; i < campaignEntries.length; i += BATCH_SIZE) {
+            batches.push(campaignEntries.slice(i, i + BATCH_SIZE));
         }
-        const results = await Promise.allSettled(messagePromises);
-        results.forEach((result, index) => {
-            if (result.status === 'fulfilled') {
-                const response = result.value;
-                if (response?.success === false && response?.duplicate) {
-                    console.log(`🚨 QUICK-SEND MESSAGE ${index + 1}: Duplicate detected for ${campaignEntries[index].recipient}`);
-                    failCount++;
-                }
-                else if (response?.success) {
-                    console.log(`✅ QUICK-SEND MESSAGE ${index + 1}: Successfully sent to ${campaignEntries[index].recipient}`);
-                    successCount++;
+        console.log(`📦 QUICK-SEND: Processing ${batches.length} batches of up to ${BATCH_SIZE} messages each`);
+        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+            const batch = batches[batchIndex];
+            console.log(`📤 QUICK-SEND: Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} messages)`);
+            const batchPromises = batch.map(campaignEntry => sendTemplateMessage(phone_number_id, access_token, campaignEntry.recipient, template_name, language, variables, templateResult.rows[0].components, campaignEntry.id.toString(), userId, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].header_media_url, templateResult.rows[0].header_handle, uploadedImageMediaId || templateResult.rows[0].media_id, templateResult.rows[0].category));
+            const batchResults = await Promise.allSettled(batchPromises);
+            batchResults.forEach((result, index) => {
+                const campaignEntry = batch[index];
+                if (result.status === 'fulfilled') {
+                    const response = result.value;
+                    if (response?.success === false && response?.duplicate) {
+                        console.log(`🚨 QUICK-SEND BATCH ${batchIndex + 1}: Duplicate detected for ${campaignEntry.recipient}`);
+                        failCount++;
+                    }
+                    else if (response?.success) {
+                        console.log(`✅ QUICK-SEND BATCH ${batchIndex + 1}: Successfully sent to ${campaignEntry.recipient}`);
+                        successCount++;
+                    }
+                    else {
+                        console.log(`⚠️ QUICK-SEND BATCH ${batchIndex + 1}: Unknown response for ${campaignEntry.recipient}:`, response);
+                        failCount++;
+                    }
                 }
                 else {
-                    console.log(`⚠️ QUICK-SEND MESSAGE ${index + 1}: Unknown response for ${campaignEntries[index].recipient}:`, response);
+                    console.log(`❌ QUICK-SEND BATCH ${batchIndex + 1}: Promise rejected for ${campaignEntry.recipient}:`, result.reason);
                     failCount++;
                 }
+            });
+            console.log(`✅ QUICK-SEND: Batch ${batchIndex + 1}/${batches.length} completed. Running totals: ${successCount} success, ${failCount} failed`);
+            if (batchIndex < batches.length - 1) {
+                console.log(`⏳ QUICK-SEND: Waiting 1 second before next batch...`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            else {
-                console.log(`❌ QUICK-SEND MESSAGE ${index + 1}: Promise rejected for ${campaignEntries[index].recipient}:`, result.reason);
-                failCount++;
-            }
-        });
+        }
         console.log(`📊 QUICK-SEND COMPLETED: ${successCount} successful, ${failCount} failed`);
         res.json({
             success: true,
