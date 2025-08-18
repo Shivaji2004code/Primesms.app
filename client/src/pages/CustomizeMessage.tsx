@@ -1052,12 +1052,6 @@ export default function CustomizeMessage() {
                     <div className="text-sm text-gray-500 mb-6">
                       {uploadedFile ? `${excelData.length} rows processed` : 'Drag and drop or click to browse'}
                     </div>
-                    {!uploadedFile && (
-                       <Button variant="outline" className="bg-white border-2 border-gray-300 hover:border-emerald-400 hover:bg-emerald-50 transition-all duration-300">
-                        <Upload className="h-5 w-5 mr-2" />
-                        Choose File
-                      </Button>
-                    )}
                   </label>
                 </div>
 

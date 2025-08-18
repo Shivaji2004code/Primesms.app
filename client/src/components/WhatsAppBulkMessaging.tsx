@@ -1126,10 +1126,6 @@ export default function WhatsAppBulkMessaging() {
                         • Phone numbers will be auto-populated line by line<br/>
                         • Include country code (e.g., 919394567890, 1234567890)
                       </div>
-                      <Button variant="outline" className="bg-white">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Choose File
-                      </Button>
                     </label>
                   </div>
 
