@@ -587,21 +587,21 @@ export default function ManageReports() {
 
             {/* Reports Table */}
             <div className="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse bg-white rounded-lg overflow-hidden shadow-sm">
                 <thead>
-                  <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[140px]">Campaign</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[100px]">Template</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[90px]">From</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[90px]">Recipient</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[80px]">Status</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[100px]">Sent At</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[100px]">Delivered At</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[100px]">Read At</th>
-                    <th className="text-left px-3 py-2 font-semibold text-xs text-gray-700 uppercase tracking-wider min-w-[120px]">Error</th>
+                  <tr className="bg-gradient-to-r from-slate-800 to-slate-700 text-white">
+                    <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[140px]">Campaign</th>
+                    <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[100px]">Template</th>
+                    <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[90px]">From</th>
+                    <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[90px]">Recipient</th>
+                    <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[80px]">Status</th>
+                    <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[100px]">Sent At</th>
+                    <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[100px]">Delivered At</th>
+                    <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[100px]">Read At</th>
+                    <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[120px]">Error</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-200">
                   {loading ? (
                     <tr>
                       <td colSpan={9} className="text-center py-8 px-4">
@@ -622,63 +622,63 @@ export default function ManageReports() {
                     </tr>
                   ) : (
                     reports.map((report, index) => (
-                      <tr key={report.id} className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                        <td className="px-3 py-2">
-                          <div className="font-medium text-xs text-gray-900 truncate max-w-[140px]" title={report.campaign_name}>
+                      <tr key={report.id} className={`hover:bg-gray-50 transition-all duration-200 border-b border-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                        <td className="px-4 py-4">
+                          <div className="font-semibold text-sm text-gray-900 truncate max-w-[140px]" title={report.campaign_name}>
                             {report.campaign_name}
                           </div>
                         </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
-                            <MessageSquare className="h-3 w-3 text-blue-600 flex-shrink-0" />
-                            <span className="text-xs text-gray-900 font-medium truncate">{report.template_used}</span>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                            <span className="text-sm text-gray-700 font-medium truncate">{report.template_used}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-3 w-3 text-green-600 flex-shrink-0" />
-                            <span className="text-xs text-gray-900 font-mono">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                            <span className="text-sm text-gray-700 font-mono">
                               {formatPhoneNumber(report.from_number)}
                             </span>
                           </div>
                         </td>
-                        <td className="px-3 py-2">
-                          <span className="text-xs text-gray-900 font-mono">
+                        <td className="px-4 py-4">
+                          <span className="text-sm text-gray-700 font-mono">
                             {formatPhoneNumber(report.recipient_number)}
                           </span>
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-4 py-4">
                           {getStatusBadge(report.status)}
                         </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                            <span className="text-xs text-gray-900">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                            <span className="text-sm text-gray-700">
                               {formatDate(report.sent_at)}
                             </span>
                           </div>
                         </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3 text-green-400 flex-shrink-0" />
-                            <span className="text-xs text-gray-900">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-green-600 flex-shrink-0" />
+                            <span className="text-sm text-gray-700">
                               {formatDate(report.delivered_at)}
                             </span>
                           </div>
                         </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3 text-purple-400 flex-shrink-0" />
-                            <span className="text-xs text-gray-900">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                            <span className="text-sm text-gray-700">
                               {formatDate(report.read_at)}
                             </span>
                           </div>
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-4 py-4">
                           {report.error_message ? (
                             <div className="relative group">
                               <div 
-                                className="text-red-600 text-xs truncate max-w-[130px] cursor-help"
+                                className="text-red-600 text-sm truncate max-w-[130px] cursor-help font-medium"
                               >
                                 {report.error_message}
                               </div>
@@ -694,7 +694,7 @@ export default function ManageReports() {
                               </div>
                             </div>
                           ) : (
-                            <span className="text-gray-400 text-xs">-</span>
+                            <span className="text-gray-400 text-sm">-</span>
                           )}
                         </td>
                       </tr>
