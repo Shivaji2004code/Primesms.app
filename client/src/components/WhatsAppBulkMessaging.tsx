@@ -1467,8 +1467,8 @@ export default function WhatsAppBulkMessaging() {
                   <div className="text-sm text-blue-800">Recipients</div>
                 </div>
                 <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                  <div className="text-lg font-bold text-purple-600">{getSelectedTemplateCategory()}</div>
-                  <div className="text-sm text-purple-800">Template Type</div>
+                  <div className="text-sm font-bold text-purple-600 truncate">{getSelectedTemplateCategory()}</div>
+                  <div className="text-xs text-purple-800">Template Type</div>
                 </div>
                 <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                   <div className="text-2xl font-bold text-green-600">₹{calculatedCost.toFixed(2)}</div>

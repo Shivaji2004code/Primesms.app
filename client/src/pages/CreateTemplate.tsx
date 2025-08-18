@@ -630,27 +630,6 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            
-{templateData.category !== 'AUTHENTICATION' && (
-              <Button 
-                variant="outline" 
-                onClick={() => handleSave(false)}
-                disabled={isLoading}
-                className="bg-white/80 hover:bg-white border-gray-200"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {isLoading ? 'Saving...' : 'Save Draft'}
-              </Button>
-            )}
-            
-            <Button 
-              onClick={() => handleSave(true)}
-              disabled={isLoading}
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white border-0 shadow-lg"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              {isLoading ? 'Creating...' : templateData.category === 'AUTHENTICATION' ? 'Create & Submit' : 'Create & Submit'}
-            </Button>
           </div>
         </div>
 
@@ -1294,6 +1273,34 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
                 </Card>
               )}
             </div>
+            
+            {/* Action Buttons - Moved to Bottom */}
+            <Card className="bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg">
+              <CardContent className="pt-6">
+                <div className="flex gap-3 justify-end">
+                  {templateData.category !== 'AUTHENTICATION' && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleSave(false)}
+                      disabled={isLoading}
+                      className="bg-white/80 hover:bg-white border-gray-200"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {isLoading ? 'Saving...' : 'Save Draft'}
+                    </Button>
+                  )}
+                  
+                  <Button 
+                    onClick={() => handleSave(true)}
+                    disabled={isLoading}
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white border-0 shadow-lg"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    {isLoading ? 'Creating...' : templateData.category === 'AUTHENTICATION' ? 'Create & Submit' : 'Create & Submit'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
