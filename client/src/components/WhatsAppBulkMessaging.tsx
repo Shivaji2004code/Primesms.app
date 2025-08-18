@@ -632,11 +632,12 @@ export default function WhatsAppBulkMessaging() {
       if (response.ok) {
         await response.json();
         
-        setAlertState({
+        setSuccessModal({
           show: true,
-          type: 'success',
-          title: 'Campaign started successfully',
-          message: `Sending ${recipients.length} messages. You can track progress in the reports section.`
+          title: 'Campaign Started Successfully!',
+          message: `Your campaign has been started successfully. You can check detailed reports for more information.`,
+          successCount: recipients.length,
+          failedCount: 0
         });
         
         // Reset form
@@ -1571,56 +1572,78 @@ export default function WhatsAppBulkMessaging() {
         </div>
       )}
 
-      {/* Success Modal */}
-      <Dialog open={successModal.show} onOpenChange={(open) => setSuccessModal(prev => ({ ...prev, show: open }))}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
-              <CheckCircle2 className="h-6 w-6" />
-              {successModal.title}
-            </DialogTitle>
-            <DialogDescription className="text-gray-600 mt-2">
-              {successModal.message}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                <div className="text-2xl font-bold text-green-600">{successModal.successCount}</div>
-                <div className="text-sm text-green-700">Delivered</div>
+      {/* Success Modal - Matching Cost Preview Style */}
+      {successModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Simple Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">{successModal.title}</h3>
+                    <p className="text-sm text-gray-600">{successModal.message}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSuccessModal(prev => ({ ...prev, show: false }))}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 h-8 w-8 p-0 rounded-lg"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
-                <div className="text-2xl font-bold text-red-600">{successModal.failedCount}</div>
-                <div className="text-sm text-red-700">Failed</div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-2xl font-bold text-green-600">{successModal.successCount}</div>
+                  <div className="text-sm text-green-700 font-medium">Delivered</div>
+                </div>
+                <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                  <div className="text-2xl font-bold text-red-600">{successModal.failedCount}</div>
+                  <div className="text-sm text-red-700 font-medium">Failed</div>
+                </div>
               </div>
-            </div>
-            
-            <div className="text-center text-sm text-gray-500">
-              Check Manage Reports for detailed delivery status and analytics
+
+              <div className="text-center text-sm text-gray-500 mb-6">
+                Check Manage Reports for detailed delivery status and analytics
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSuccessModal(prev => ({ ...prev, show: false }))}
+                  className="bg-white hover:bg-gray-50 border-gray-200"
+                >
+                  OK
+                </Button>
+                <Button 
+                  onClick={() => {
+                    navigate('/user/manage-reports');
+                    setSuccessModal(prev => ({ ...prev, show: false }));
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Show Reports
+                </Button>
+              </div>
+
+              {/* Simple Footer */}
+              <div className="text-center mt-4">
+                <p className="text-xs text-gray-500">
+                  Campaign completed successfully
+                </p>
+              </div>
             </div>
           </div>
-
-          <DialogFooter className="gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setSuccessModal(prev => ({ ...prev, show: false }))}
-              className="bg-white hover:bg-gray-50"
-            >
-              OK
-            </Button>
-            <Button 
-              onClick={() => {
-                navigate('/user/manage-reports');
-                setSuccessModal(prev => ({ ...prev, show: false }));
-              }}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              Show Reports
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }

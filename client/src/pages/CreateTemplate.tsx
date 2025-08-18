@@ -1274,16 +1274,22 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
               )}
             </div>
             
-            {/* Action Buttons - Moved to Bottom */}
-            <Card className="bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg">
-              <CardContent className="pt-6">
+            {/* Action Buttons - Always Visible at Bottom */}
+            <Card className="bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg mt-6">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900">Complete Template Creation</CardTitle>
+                <CardDescription>
+                  Save as draft or create and submit your template for approval
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <div className="flex gap-3 justify-end">
                   {templateData.category !== 'AUTHENTICATION' && (
                     <Button 
                       variant="outline" 
                       onClick={() => handleSave(false)}
                       disabled={isLoading}
-                      className="bg-white/80 hover:bg-white border-gray-200"
+                      className="bg-white hover:bg-gray-50 border-gray-300 px-6 py-2"
                     >
                       <Save className="h-4 w-4 mr-2" />
                       {isLoading ? 'Saving...' : 'Save Draft'}
@@ -1293,7 +1299,7 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
                   <Button 
                     onClick={() => handleSave(true)}
                     disabled={isLoading}
-                    className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white border-0 shadow-lg"
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white border-0 shadow-lg px-6 py-2"
                   >
                     <Send className="h-4 w-4 mr-2" />
                     {isLoading ? 'Creating...' : templateData.category === 'AUTHENTICATION' ? 'Create & Submit' : 'Create & Submit'}
