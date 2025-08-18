@@ -589,7 +589,7 @@ export default function ManageReports() {
             <div className="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
               <table className="w-full border-collapse bg-white rounded-lg overflow-hidden shadow-sm">
                 <thead>
-                  <tr className="bg-gradient-to-r from-slate-800 to-slate-700 text-white">
+                  <tr className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white">
                     <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[140px]">Campaign</th>
                     <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[100px]">Template</th>
                     <th className="text-left px-4 py-4 font-semibold text-sm uppercase tracking-wider min-w-[90px]">From</th>
