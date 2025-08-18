@@ -38,6 +38,7 @@ import { Progress } from '../components/ui/progress';
 import { useNotifier } from '../contexts/NotificationContext';
 import { apiRequest } from '../lib/api';
 import { useToast } from '../components/ui/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
 // Pricing constants per message in INR
 const PRICING = {
@@ -104,6 +105,21 @@ export default function CustomizeMessage() {
   // Form progress tracking
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
+
+  // Success modal state
+  const [successModal, setSuccessModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    successCount: number;
+    failedCount: number;
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    successCount: 0,
+    failedCount: 0
+  });
 
   // Load initial data
   useEffect(() => {
@@ -519,10 +535,12 @@ export default function CustomizeMessage() {
         const result = await response.json();
         console.log('Send result:', result);
         
-        toast({
-          title: "Messages sent successfully",
-          description: `Sent ${result.sent_count || excelData.length} personalized messages`,
-          variant: "default"
+        setSuccessModal({
+          show: true,
+          title: 'Campaign Completed Successfully!',
+          message: `Your personalized message campaign has been completed successfully. You can check detailed reports for more information.`,
+          successCount: result.sent_count || excelData.length,
+          failedCount: 0
         });
         
         // Reset form
@@ -592,10 +610,12 @@ export default function CustomizeMessage() {
         const result = await response.json();
         console.log('Bulk send result:', result);
         
-        toast({
-          title: "Bulk custom messages sent successfully",
-          description: `Processed ${excelData.length} personalized messages using 200-message batching with 1-second delays. ${result.data?.successful_sends || 0} successful, ${result.data?.failed_sends || 0} failed.`,
-          variant: "default"
+        setSuccessModal({
+          show: true,
+          title: 'Bulk Campaign Completed Successfully!',
+          message: `Your bulk personalized message campaign has been completed successfully. You can check detailed reports for more information.`,
+          successCount: result.data?.successful_sends || 0,
+          failedCount: result.data?.failed_sends || 0
         });
         
         // Reset form
@@ -1260,6 +1280,57 @@ export default function CustomizeMessage() {
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      <Dialog open={successModal.show} onOpenChange={(open) => setSuccessModal(prev => ({ ...prev, show: open }))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle2 className="h-6 w-6" />
+              {successModal.title}
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 mt-2">
+              {successModal.message}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="text-2xl font-bold text-green-600">{successModal.successCount}</div>
+                <div className="text-sm text-green-700">Delivered</div>
+              </div>
+              <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+                <div className="text-2xl font-bold text-red-600">{successModal.failedCount}</div>
+                <div className="text-sm text-red-700">Failed</div>
+              </div>
+            </div>
+            
+            <div className="text-center text-sm text-gray-500">
+              Check Manage Reports for detailed delivery status and analytics
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setSuccessModal(prev => ({ ...prev, show: false }))}
+              className="bg-white hover:bg-gray-50"
+            >
+              OK
+            </Button>
+            <Button 
+              onClick={() => {
+                navigate('/user/manage-reports');
+                setSuccessModal(prev => ({ ...prev, show: false }));
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Show Reports
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
     </>
   );

@@ -5,7 +5,7 @@ export default function WhatsAppBulkMessagingPage() {
   return (
     <DashboardLayout 
       title="WhatsApp Quick Send"
-      subtitle="Send messages to multiple recipients using approved templates with automatic 200-message batching."
+      subtitle="Send messages instantly to multiple recipients using approved templates. Choose Quick Send for immediate delivery or Bulk for large campaigns."
     >
       <WhatsAppBulkMessaging />
     </DashboardLayout>

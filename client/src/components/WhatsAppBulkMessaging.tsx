@@ -34,6 +34,8 @@ import { Progress } from './ui/progress';
 import { useStore } from '../store/useStore';
 import { useNotifier } from '../contexts/NotificationContext';
 import { apiRequest } from '../lib/api';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { useNavigate } from 'react-router-dom';
 
 interface WhatsAppNumber {
   id: string;
@@ -157,6 +159,23 @@ export default function WhatsAppBulkMessaging() {
     title: string;
     message: string;
   } | null>(null);
+
+  // Success modal state
+  const [successModal, setSuccessModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    successCount: number;
+    failedCount: number;
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    successCount: 0,
+    failedCount: 0
+  });
+
+  const navigate = useNavigate();
 
   // Form progress tracking
   const totalSteps = 4;
@@ -688,11 +707,12 @@ export default function WhatsAppBulkMessaging() {
       if (response.ok) {
         const data = await response.json();
         
-        setAlertState({
+        setSuccessModal({
           show: true,
-          type: 'success',
-          title: 'Messages sent successfully',
-          message: `Processed ${recipients.length} recipients in batches of 200 with 1-second delays. ${data.successful_sends || 0} sent, ${data.failed_sends || 0} failed.`
+          title: 'Campaign Completed Successfully!',
+          message: `Your campaign has been completed successfully. You can check detailed reports for more information.`,
+          successCount: data.successful_sends || 0,
+          failedCount: data.failed_sends || 0
         });
         
         // Reset form
@@ -1550,6 +1570,57 @@ export default function WhatsAppBulkMessaging() {
           </div>
         </div>
       )}
+
+      {/* Success Modal */}
+      <Dialog open={successModal.show} onOpenChange={(open) => setSuccessModal(prev => ({ ...prev, show: open }))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle2 className="h-6 w-6" />
+              {successModal.title}
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 mt-2">
+              {successModal.message}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="text-2xl font-bold text-green-600">{successModal.successCount}</div>
+                <div className="text-sm text-green-700">Delivered</div>
+              </div>
+              <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+                <div className="text-2xl font-bold text-red-600">{successModal.failedCount}</div>
+                <div className="text-sm text-red-700">Failed</div>
+              </div>
+            </div>
+            
+            <div className="text-center text-sm text-gray-500">
+              Check Manage Reports for detailed delivery status and analytics
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setSuccessModal(prev => ({ ...prev, show: false }))}
+              className="bg-white hover:bg-gray-50"
+            >
+              OK
+            </Button>
+            <Button 
+              onClick={() => {
+                navigate('/user/manage-reports');
+                setSuccessModal(prev => ({ ...prev, show: false }));
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Show Reports
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
