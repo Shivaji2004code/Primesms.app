@@ -1301,17 +1301,7 @@ export default function CustomizeMessage() {
                 </Button>
               </div>
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                  <div className="text-2xl font-bold text-green-600">{successModal.successCount}</div>
-                  <div className="text-sm text-green-700 font-medium">Delivered</div>
-                </div>
-                <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                  <div className="text-2xl font-bold text-red-600">{successModal.failedCount}</div>
-                  <div className="text-sm text-red-700 font-medium">Failed</div>
-                </div>
-              </div>
+              {/* Removed Delivered/Failed counters as requested */}
 
               <div className="text-center text-sm text-gray-500 mb-6">
                 Check Manage Reports for detailed delivery status and analytics
