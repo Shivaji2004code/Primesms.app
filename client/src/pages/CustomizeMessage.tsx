@@ -1301,7 +1301,7 @@ export default function CustomizeMessage() {
                 </Button>
               </div>
 
-              {/* Removed Delivered/Failed counters as requested */}
+              {/* Removed Delivered/Failed counters - keeping only success message */}
 
               <div className="text-center text-sm text-gray-500 mb-6">
                 Check Manage Reports for detailed delivery status and analytics
