@@ -1277,48 +1277,28 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
         </div>
       </div>
       
-      {/* Action Buttons - At the Very Bottom After All Form Sections */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-        <Card className="bg-gradient-to-r from-emerald-50 to-emerald-100 border-emerald-200 shadow-xl mt-8">
-          <CardHeader className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-t-lg">
-            <CardTitle className="text-xl font-bold">🎯 Complete Template Creation</CardTitle>
-            <CardDescription className="text-emerald-100">
-              Ready to save your template? Choose your action below
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="flex gap-4 justify-center">
-              {templateData.category !== 'AUTHENTICATION' && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => handleSave(false)}
-                  disabled={isLoading}
-                  className="bg-white hover:bg-gray-50 border-emerald-300 text-emerald-700 hover:text-emerald-800 px-8 py-3 text-lg font-semibold shadow-lg"
-                >
-                  <Save className="h-5 w-5 mr-3" />
-                  {isLoading ? 'Saving...' : 'Save Draft'}
-                </Button>
-              )}
-              
-              <Button 
-                onClick={() => handleSave(true)}
-                disabled={isLoading}
-                className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white border-0 shadow-xl px-8 py-3 text-lg font-semibold transform hover:scale-105 transition-all duration-200"
-              >
-                <Send className="h-5 w-5 mr-3" />
-                {isLoading ? 'Creating...' : templateData.category === 'AUTHENTICATION' ? 'Create & Submit' : 'Create & Submit'}
-              </Button>
-            </div>
-            
-            <div className="text-center mt-4">
-              <p className="text-sm text-emerald-700 font-medium">
-                {templateData.category === 'AUTHENTICATION' 
-                  ? 'Authentication templates are submitted directly to WhatsApp for approval' 
-                  : 'Save as draft to edit later, or create & submit for WhatsApp approval'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Simple Action Buttons */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6">
+        <div className="flex gap-4 justify-center">
+          {templateData.category !== 'AUTHENTICATION' && (
+            <Button 
+              variant="outline" 
+              onClick={() => handleSave(false)}
+              disabled={isLoading}
+              className="px-6 py-2"
+            >
+              {isLoading ? 'Saving...' : 'Save Draft'}
+            </Button>
+          )}
+          
+          <Button 
+            onClick={() => handleSave(true)}
+            disabled={isLoading}
+            className="px-6 py-2"
+          >
+            {isLoading ? 'Creating...' : 'Create & Submit'}
+          </Button>
+        </div>
       </div>
 
       {/* Variable Dialog */}
