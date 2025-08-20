@@ -4,6 +4,8 @@ import MobileNav from './MobileNav';
 import Header from './Header';
 import { NotificationSystem } from '../ui/notification-system';
 import { useAuth } from '../../hooks/useAuth';
+import { useAutoLogout } from '../../hooks/useAutoLogout';
+import { SessionTimeoutWarning } from '../SessionTimeoutWarning';
 import { Loader2, Menu } from 'lucide-react';
 import { Button } from '../ui/button';
 
@@ -16,6 +18,21 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
   const { user, isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+
+  // Auto-logout functionality for authenticated users
+  const { resetActivity } = useAutoLogout({
+    timeoutMinutes: 10,
+    warningMinutes: 2,
+    onWarning: () => {
+      console.log('🔔 Showing session timeout warning');
+      setShowTimeoutWarning(true);
+    },
+    onLogout: () => {
+      console.log('🚪 Auto-logout executed');
+      setShowTimeoutWarning(false);
+    }
+  });
 
   if (isLoading) {
     return (
@@ -103,6 +120,36 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
       
       {/* Global Notification System */}
       <NotificationSystem />
+
+      {/* Session Timeout Warning Modal */}
+      <SessionTimeoutWarning
+        isOpen={showTimeoutWarning}
+        onStayLoggedIn={() => {
+          console.log('👤 User chose to stay logged in');
+          setShowTimeoutWarning(false);
+          resetActivity();
+        }}
+        onLogout={async () => {
+          console.log('👤 User chose to logout from warning');
+          setShowTimeoutWarning(false);
+          
+          try {
+            // Call logout endpoint
+            await fetch('/api/auth/logout', {
+              method: 'POST',
+              credentials: 'include'
+            });
+          } catch (error) {
+            console.error('Error during manual logout:', error);
+          }
+
+          // Clear storage and redirect
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.href = '/login';
+        }}
+        warningTimeMinutes={2}
+      />
     </div>
   );
 }

@@ -141,13 +141,22 @@ router.post('/login', async (req, res) => {
         if (!passwordMatch)
             return sendErr(res, 401, 'INVALID_PASSWORD');
         try {
-            req.session.userId = user.id;
+            const sessionData = req.session;
+            sessionData.userId = user.id;
+            sessionData.user = {
+                id: user.id,
+                username: user.username,
+                name: user.name,
+                role: user.role
+            };
+            sessionData.lastActivity = Date.now();
             req.session.save((err) => {
                 if (err) {
                     console.error('[AUTH] SESSION_SAVE_FAILED:', err);
                     return sendErr(res, 500, 'SESSION_SAVE_FAILED');
                 }
-                console.log('[AUTH] login ok:', { userId: user.id, ms: Date.now() - started });
+                console.log('[AUTH] login ok:', { userId: user.id, username: user.username, ms: Date.now() - started });
+                console.log('🔐 Session initialized with auto-logout tracking');
                 return res.status(200).json({
                     ok: true,
                     user: {

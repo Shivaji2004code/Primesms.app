@@ -201,13 +201,24 @@ router.post('/login', async (req, res) => {
 
     // 4) Session save
     try {
-      (req.session as any).userId = user.id;
+      const sessionData = req.session as any;
+      sessionData.userId = user.id;
+      sessionData.user = {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role
+      };
+      // Initialize last activity timestamp for auto-logout tracking
+      sessionData.lastActivity = Date.now();
+      
       req.session.save((err: any) => {
         if (err) {
           console.error('[AUTH] SESSION_SAVE_FAILED:', err);
           return sendErr(res, 500, 'SESSION_SAVE_FAILED');
         }
-        console.log('[AUTH] login ok:', { userId: user.id, ms: Date.now() - started });
+        console.log('[AUTH] login ok:', { userId: user.id, username: user.username, ms: Date.now() - started });
+        console.log('🔐 Session initialized with auto-logout tracking');
         return res.status(200).json({ 
           ok: true,
           user: {

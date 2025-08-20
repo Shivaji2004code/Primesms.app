@@ -142,9 +142,38 @@ app.use((0, express_session_1.default)({
         httpOnly: true,
         sameSite: isProd ? 'lax' : 'lax',
         secure: isProd,
-        maxAge: 7 * 24 * 60 * 60 * 1000
+        maxAge: 10 * 60 * 1000
     }
 }));
+app.use((req, res, next) => {
+    const skipPaths = ['/health', '/webhooks', '/api/debug', '.js', '.css', '.png', '.jpg', '.ico'];
+    const shouldSkip = skipPaths.some(path => req.path.includes(path));
+    if (shouldSkip) {
+        return next();
+    }
+    if (req.session && req.session.user) {
+        const currentTime = Date.now();
+        const sessionData = req.session;
+        if (sessionData.lastActivity && (currentTime - sessionData.lastActivity) > (10 * 60 * 1000)) {
+            console.log(`🕐 Session expired for user ${sessionData.user?.username || 'unknown'} after 10 minutes of inactivity`);
+            req.session.destroy((err) => {
+                if (err) {
+                    console.error('Session destruction error:', err);
+                }
+                res.status(401).json({
+                    error: 'Session expired due to inactivity',
+                    code: 'SESSION_EXPIRED',
+                    redirect: '/login'
+                });
+            });
+            return;
+        }
+        sessionData.lastActivity = currentTime;
+        req.session.cookie.maxAge = 10 * 60 * 1000;
+        console.log(`🔄 Activity detected for user ${sessionData.user?.username || 'unknown'}, session extended`);
+    }
+    next();
+});
 app.use('/api/auth/login', rateLimit_1.loginLimiter);
 app.use('/api/auth/forgot-password', rateLimit_1.otpLimiter);
 app.use('/api/auth/verify-otp', rateLimit_1.otpLimiter);

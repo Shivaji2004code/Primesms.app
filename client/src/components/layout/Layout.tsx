@@ -1,7 +1,9 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import Header from './Header';
 import { NotificationSystem } from '../ui/notification-system';
 import { useAuth } from '../../hooks/useAuth';
+import { useAutoLogout } from '../../hooks/useAutoLogout';
+import { SessionTimeoutWarning } from '../SessionTimeoutWarning';
 import { Loader2 } from 'lucide-react';
 
 interface LayoutProps {
@@ -10,6 +12,24 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { user, isLoading } = useAuth();
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+
+  // Auto-logout functionality for authenticated users (only activate if user is logged in)
+  const { resetActivity } = useAutoLogout({
+    timeoutMinutes: 10,
+    warningMinutes: 2,
+    onWarning: () => {
+      // Only show warning if user is actually logged in
+      if (user) {
+        console.log('🔔 Showing session timeout warning in Layout');
+        setShowTimeoutWarning(true);
+      }
+    },
+    onLogout: () => {
+      console.log('🚪 Auto-logout executed in Layout');
+      setShowTimeoutWarning(false);
+    }
+  });
 
   if (isLoading) {
     return (
@@ -34,6 +54,38 @@ export default function Layout({ children }: LayoutProps) {
       
       {/* Global Notification System */}
       <NotificationSystem />
+
+      {/* Session Timeout Warning Modal - Only for authenticated users */}
+      {user && (
+        <SessionTimeoutWarning
+          isOpen={showTimeoutWarning}
+          onStayLoggedIn={() => {
+            console.log('👤 User chose to stay logged in in Layout');
+            setShowTimeoutWarning(false);
+            resetActivity();
+          }}
+          onLogout={async () => {
+            console.log('👤 User chose to logout from warning in Layout');
+            setShowTimeoutWarning(false);
+            
+            try {
+              // Call logout endpoint
+              await fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+              });
+            } catch (error) {
+              console.error('Error during manual logout:', error);
+            }
+
+            // Clear storage and redirect
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '/login';
+          }}
+          warningTimeMinutes={2}
+        />
+      )}
       
       {/* Footer */}
       {showHeader && (
