@@ -233,9 +233,9 @@ app.use(session({
 // SESSION ACTIVITY TRACKING MIDDLEWARE
 // ============================================================================
 
-// Middleware to track user activity and extend session
+// Middleware to check session expiration (but NOT auto-extend)
 app.use((req, res, next) => {
-  // Skip activity tracking for health checks, webhooks, and static files
+  // Skip session checking for health checks, webhooks, and static files
   const skipPaths = ['/health', '/webhooks', '/api/debug', '.js', '.css', '.png', '.jpg', '.ico'];
   const shouldSkip = skipPaths.some(path => req.path.includes(path));
   
@@ -243,13 +243,12 @@ app.use((req, res, next) => {
     return next();
   }
 
-  // Track activity for authenticated users
+  // Check session expiration for authenticated users (but don't auto-extend)
   if (req.session && (req.session as any).user) {
-    const currentTime = Date.now();
     const sessionData = req.session as any;
     
-    // Check if session has expired (10 minutes of inactivity) BEFORE updating
-    if (sessionData.lastActivity && (currentTime - sessionData.lastActivity) > (10 * 60 * 1000)) {
+    // Check if session has expired (10 minutes of inactivity)
+    if (sessionData.lastActivity && (Date.now() - sessionData.lastActivity) > (10 * 60 * 1000)) {
       // Session expired, destroy it
       console.log(`🕐 Session expired for user ${sessionData.user?.username || 'unknown'} after 10 minutes of inactivity`);
       req.session.destroy((err) => {
@@ -264,14 +263,6 @@ app.use((req, res, next) => {
       });
       return;
     }
-    
-    // Update last activity timestamp (activity detected)
-    sessionData.lastActivity = currentTime;
-    
-    // Reset the cookie maxAge to extend the session
-    req.session.cookie.maxAge = 10 * 60 * 1000; // Reset to 10 minutes
-    
-    console.log(`🔄 Activity detected for user ${sessionData.user?.username || 'unknown'}, session extended`);
   }
   
   next();

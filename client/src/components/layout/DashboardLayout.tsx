@@ -124,10 +124,10 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
       {/* Session Timeout Warning Modal */}
       <SessionTimeoutWarning
         isOpen={showTimeoutWarning}
-        onStayLoggedIn={() => {
+        onStayLoggedIn={async () => {
           console.log('👤 User chose to stay logged in');
           setShowTimeoutWarning(false);
-          resetActivity();
+          await resetActivity();
         }}
         onLogout={async () => {
           console.log('👤 User chose to logout from warning');

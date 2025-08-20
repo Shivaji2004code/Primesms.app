@@ -59,10 +59,10 @@ export default function Layout({ children }: LayoutProps) {
       {user && (
         <SessionTimeoutWarning
           isOpen={showTimeoutWarning}
-          onStayLoggedIn={() => {
+          onStayLoggedIn={async () => {
             console.log('👤 User chose to stay logged in in Layout');
             setShowTimeoutWarning(false);
-            resetActivity();
+            await resetActivity();
           }}
           onLogout={async () => {
             console.log('👤 User chose to logout from warning in Layout');

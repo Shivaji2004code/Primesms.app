@@ -152,9 +152,8 @@ app.use((req, res, next) => {
         return next();
     }
     if (req.session && req.session.user) {
-        const currentTime = Date.now();
         const sessionData = req.session;
-        if (sessionData.lastActivity && (currentTime - sessionData.lastActivity) > (10 * 60 * 1000)) {
+        if (sessionData.lastActivity && (Date.now() - sessionData.lastActivity) > (10 * 60 * 1000)) {
             console.log(`🕐 Session expired for user ${sessionData.user?.username || 'unknown'} after 10 minutes of inactivity`);
             req.session.destroy((err) => {
                 if (err) {
@@ -168,9 +167,6 @@ app.use((req, res, next) => {
             });
             return;
         }
-        sessionData.lastActivity = currentTime;
-        req.session.cookie.maxAge = 10 * 60 * 1000;
-        console.log(`🔄 Activity detected for user ${sessionData.user?.username || 'unknown'}, session extended`);
     }
     next();
 });

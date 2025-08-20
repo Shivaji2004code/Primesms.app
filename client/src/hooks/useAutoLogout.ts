@@ -79,7 +79,7 @@ export const useAutoLogout = ({
   }, [onWarning, warningMinutes]);
 
   // Reset activity function
-  const resetActivity = useCallback(() => {
+  const resetActivity = useCallback(async () => {
     // Only reset activity if user is logged in and not currently loading
     if (!user || isLoading || !isActiveRef.current) {
       return;
@@ -97,13 +97,24 @@ export const useAutoLogout = ({
       clearTimeout(warningTimerRef.current);
     }
 
+    // Call backend to reset session activity
+    try {
+      await fetch('/api/auth/reset-activity', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      console.log(`🔄 Activity reset for user ${user.username}. Session extended on server.`);
+    } catch (error) {
+      console.error('Error resetting activity on server:', error);
+    }
+
     // Set new warning timer
     warningTimerRef.current = setTimeout(showWarning, warningMs);
     
     // Set new logout timer
     logoutTimerRef.current = setTimeout(performLogout, timeoutMs);
 
-    console.log(`🔄 Activity reset for user ${user.username}. Auto-logout in ${timeoutMinutes} minutes`);
+    console.log(`🔄 Frontend timers reset for user ${user.username}. Auto-logout in ${timeoutMinutes} minutes`);
   }, [timeoutMs, warningMs, showWarning, performLogout, timeoutMinutes, user, isLoading]);
 
   // Check session validity with server
@@ -128,8 +139,8 @@ export const useAutoLogout = ({
   }, [performLogout]);
 
   // Activity event handlers
-  const handleActivity = useCallback(() => {
-    resetActivity();
+  const handleActivity = useCallback(async () => {
+    await resetActivity();
   }, [resetActivity]);
 
   // Effect to manage auto-logout activation based on user login status
@@ -178,8 +189,8 @@ export const useAutoLogout = ({
     const throttledActivity = () => {
       if (throttleTimer) return;
       
-      throttleTimer = setTimeout(() => {
-        handleActivity();
+      throttleTimer = setTimeout(async () => {
+        await handleActivity();
         throttleTimer = null;
       }, 5000); // Throttle to every 5 seconds
     };

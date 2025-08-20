@@ -216,6 +216,29 @@ router.post('/logout', auth_1.requireAuth, (req, res) => {
         res.json({ message: 'Logged out successfully' });
     });
 });
+router.post('/reset-activity', auth_1.requireAuth, (req, res) => {
+    try {
+        const sessionData = req.session;
+        sessionData.lastActivity = Date.now();
+        req.session.cookie.maxAge = 10 * 60 * 1000;
+        req.session.save((err) => {
+            if (err) {
+                console.error('Error saving session activity:', err);
+                return res.status(500).json({ error: 'Could not reset activity' });
+            }
+            console.log(`🔄 Activity manually reset for user ${sessionData.user?.username || 'unknown'}`);
+            res.json({
+                success: true,
+                message: 'Activity reset successfully',
+                lastActivity: sessionData.lastActivity
+            });
+        });
+    }
+    catch (error) {
+        console.error('Reset activity error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 router.post('/forgot-password', async (req, res) => {
     try {
         const { username, phone } = req.body;

@@ -289,6 +289,37 @@ router.post('/logout', requireAuth, (req, res) => {
   });
 });
 
+// Reset activity endpoint for auto-logout system
+router.post('/reset-activity', requireAuth, (req, res) => {
+  try {
+    const sessionData = req.session as any;
+    
+    // Update last activity timestamp
+    sessionData.lastActivity = Date.now();
+    
+    // Reset the cookie maxAge to extend the session
+    req.session.cookie.maxAge = 10 * 60 * 1000; // Reset to 10 minutes
+    
+    // Save the session with updated activity
+    req.session.save((err) => {
+      if (err) {
+        console.error('Error saving session activity:', err);
+        return res.status(500).json({ error: 'Could not reset activity' });
+      }
+      
+      console.log(`🔄 Activity manually reset for user ${sessionData.user?.username || 'unknown'}`);
+      res.json({ 
+        success: true, 
+        message: 'Activity reset successfully',
+        lastActivity: sessionData.lastActivity
+      });
+    });
+  } catch (error) {
+    console.error('Reset activity error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Forgot password - send OTP
 router.post('/forgot-password', async (req, res) => {
   try {
