@@ -438,6 +438,9 @@ export default function WhatsAppBulkMessaging() {
           console.log('Setting manual recipients:', numbersText);
           setManualRecipients(numbersText);
           
+          // Auto-parse recipients immediately after setting the text
+          parseRecipientsFromText(numbersText);
+          
           setAlertState({
             show: true,
             type: 'success',
@@ -489,7 +492,11 @@ export default function WhatsAppBulkMessaging() {
       }
       
       // Join all lines and put in manual entry field
-      setManualRecipients(lines.join('\n'));
+      const numbersText = lines.join('\n');
+      setManualRecipients(numbersText);
+      
+      // Auto-parse recipients immediately after setting the text
+      parseRecipientsFromText(numbersText);
       
       setAlertState({
         show: true,
@@ -511,12 +518,9 @@ export default function WhatsAppBulkMessaging() {
     reader.readAsText(file);
   };
 
-  const handleManualRecipientsChange = (value: string) => {
-    setManualRecipients(value);
-    
-    // Auto-add recipients as they're typed/pasted
-    if (value.trim()) {
-      const numbers = value
+  const parseRecipientsFromText = (text: string) => {
+    if (text.trim()) {
+      const numbers = text
         .split(/[,\n]/)
         .map(num => num.trim())
         .filter(num => num.length > 0);
@@ -527,6 +531,11 @@ export default function WhatsAppBulkMessaging() {
     } else {
       setRecipients([]);
     }
+  };
+
+  const handleManualRecipientsChange = (value: string) => {
+    setManualRecipients(value);
+    parseRecipientsFromText(value);
   };
 
   const handleVariableChange = (index: string, value: string) => {
