@@ -19,7 +19,7 @@ export default function Landing() {
             
             <nav className="hidden lg:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-emerald-600 font-medium">Features</a>
-              <a href="#docs" className="text-gray-600 hover:text-emerald-600 font-medium">Docs</a>
+              <Link to="/docs" className="text-gray-600 hover:text-emerald-600 font-medium">Docs</Link>
               <a href="#support" className="text-gray-600 hover:text-emerald-600 font-medium">Support</a>
             </nav>
             
@@ -470,7 +470,7 @@ export default function Landing() {
             <div>
               <h3 className="text-lg font-semibold mb-4 text-white">Resources</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Documentation</a></li>
+                <li><Link to="/docs" className="hover:text-emerald-400 transition-colors">Documentation</Link></li>
                 <li><a href="#" className="hover:text-emerald-400 transition-colors">API Reference</a></li>
                 <li><a href="#" className="hover:text-emerald-400 transition-colors">Support</a></li>
               </ul>
