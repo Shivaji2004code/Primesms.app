@@ -481,6 +481,8 @@ export default function Landing() {
               <h3 className="text-lg font-semibold mb-4 text-white">Company</h3>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li><Link to="/contact" className="hover:text-emerald-400 transition-colors">Contact</Link></li>
+                <li><Link to="/terms" className="hover:text-emerald-400 transition-colors">Terms & Conditions</Link></li>
+                <li><Link to="/privacy" className="hover:text-emerald-400 transition-colors">Privacy Policy</Link></li>
               </ul>
             </div>
           </div>
@@ -490,6 +492,7 @@ export default function Landing() {
               © 2025 Prime SMS. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
+              <Link to="/terms" className="text-gray-400 hover:text-emerald-400 transition-colors text-sm">Terms & Conditions</Link>
               <Link to="/privacy" className="text-gray-400 hover:text-emerald-400 transition-colors text-sm">Privacy</Link>
               <Link to="/refund-policy" className="text-gray-400 hover:text-emerald-400 transition-colors text-sm">Refund Policy</Link>
             </div>

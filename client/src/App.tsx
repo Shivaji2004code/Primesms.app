@@ -30,6 +30,7 @@ import Support from './pages/Support';
 import APIManagement from './pages/APIManagement';
 import Privacy from './pages/Privacy';
 import RefundPolicy from './pages/RefundPolicy';
+import Terms from './pages/Terms';
 import Docs from './pages/Docs';
 import Contact from './pages/Contact';
 
@@ -193,6 +194,7 @@ function App() {
           {/* Public: Privacy Policy */}
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/terms" element={<Terms />} />
 
           {/* Profile routes - accessible by both admin and user */}
           <Route 
