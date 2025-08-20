@@ -605,149 +605,148 @@ export default function WhatsAppBulkMessaging() {
       return handleBulkQuickSend();
     }
 
-    setLoading(prev => ({ ...prev, sending: true }));
-    try {
-      // Use FormData when image is present, otherwise use JSON
-      let response;
-      
-      if (headerImage) {
-        // Use FormData for image upload
-        const formData = new FormData();
-        formData.append('phone_number_id', selectedNumber);
-        formData.append('template_name', selectedTemplate);
-        formData.append('language', selectedLanguage);
-        formData.append('recipients_text', recipients.join('\n'));
-        formData.append('variables', JSON.stringify(templateVariables));
-        formData.append('campaign_name', campaignName || `Quick Send - ${selectedTemplate} - ${new Date().toISOString()}`);
-        formData.append('headerImage', headerImage);
+    // Capture form data before reset
+    const formData = {
+      selectedNumber,
+      selectedTemplate,
+      selectedLanguage,
+      recipients: [...recipients],
+      templateVariables: { ...templateVariables },
+      campaignName,
+      headerImage
+    };
 
-        response = await fetch('/api/whatsapp/quick-send', {
+    // Show immediate success popup without waiting for backend response
+    setSuccessModal({
+      show: true,
+      title: 'Campaign Started Successfully!',
+      message: `Your campaign has been started and is being processed in batches. You can check detailed reports for delivery status.`,
+      successCount: recipients.length,
+      failedCount: 0
+    });
+    
+    // Reset form immediately
+    resetForm();
+
+    // Send to backend asynchronously (fire and forget)
+    try {
+      if (formData.headerImage) {
+        // Use FormData for image upload
+        const requestFormData = new FormData();
+        requestFormData.append('phone_number_id', formData.selectedNumber);
+        requestFormData.append('template_name', formData.selectedTemplate);
+        requestFormData.append('language', formData.selectedLanguage);
+        requestFormData.append('recipients_text', formData.recipients.join('\n'));
+        requestFormData.append('variables', JSON.stringify(formData.templateVariables));
+        requestFormData.append('campaign_name', formData.campaignName || `Quick Send - ${formData.selectedTemplate} - ${new Date().toISOString()}`);
+        requestFormData.append('headerImage', formData.headerImage);
+
+        fetch('/api/whatsapp/quick-send', {
           method: 'POST',
           credentials: 'include',
-          body: formData
+          body: requestFormData
+        }).catch(error => {
+          console.error('Background send error:', error);
         });
       } else {
         // Use JSON for text-only templates
         const payload = {
-          phone_number_id: selectedNumber,
-          template_name: selectedTemplate,
-          language: selectedLanguage,
-          recipients_text: recipients.join('\n'),
-          variables: templateVariables,
-          campaign_name: campaignName || `Quick Send - ${selectedTemplate} - ${new Date().toISOString()}`
+          phone_number_id: formData.selectedNumber,
+          template_name: formData.selectedTemplate,
+          language: formData.selectedLanguage,
+          recipients_text: formData.recipients.join('\n'),
+          variables: formData.templateVariables,
+          campaign_name: formData.campaignName || `Quick Send - ${formData.selectedTemplate} - ${new Date().toISOString()}`
         };
 
-        response = await fetch('/api/whatsapp/quick-send', {
+        fetch('/api/whatsapp/quick-send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify(payload)
+        }).catch(error => {
+          console.error('Background send error:', error);
         });
-      }
-
-      if (response.ok) {
-        await response.json();
-        
-        setSuccessModal({
-          show: true,
-          title: 'Campaign Started Successfully!',
-          message: `Your campaign has been started successfully. You can check detailed reports for more information.`,
-          successCount: recipients.length,
-          failedCount: 0
-        });
-        
-        // Reset form
-        resetForm();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Send failed');
       }
     } catch (error) {
-      console.error('Error sending campaign:', error);
-      setAlertState({
-        show: true,
-        type: 'error',
-        title: 'Send failed',
-        message: error instanceof Error ? error.message : 'Please try again'
-      });
-    } finally {
-      setLoading(prev => ({ ...prev, sending: false }));
+      console.error('Error initiating campaign:', error);
+      // Note: We don't show user error here since campaign is "started" from UI perspective
     }
   };
 
   const handleBulkQuickSend = async () => {
-    setLoading(prev => ({ ...prev, sending: true }));
+    // Capture form data before reset
+    const formData = {
+      selectedNumber,
+      selectedTemplate,
+      selectedLanguage,
+      recipients: [...recipients],
+      templateVariables: { ...templateVariables },
+      campaignName,
+      headerImage
+    };
+
+    // Show immediate success popup without waiting for backend response
+    setSuccessModal({
+      show: true,
+      title: 'Campaign Started Successfully!',
+      message: `Your bulk campaign has been started and is being processed in batches. You can check detailed reports for delivery status.`,
+      successCount: recipients.length,
+      failedCount: 0
+    });
+    
+    // Reset form immediately
+    resetForm();
+
+    // Send to backend asynchronously (fire and forget)
     try {
       // Check if we need to send FormData (for header image) or JSON
-      const hasHeaderImage = headerImage !== null;
-      
-      let response: Response;
+      const hasHeaderImage = formData.headerImage !== null;
       
       if (hasHeaderImage) {
         // Use FormData for image upload
-        const formData = new FormData();
-        formData.append('phone_number_id', selectedNumber);
-        formData.append('template_name', selectedTemplate);
-        formData.append('language', selectedLanguage);
-        formData.append('recipients_text', recipients.join('\n'));
-        formData.append('variables', JSON.stringify(templateVariables));
-        formData.append('campaign_name', campaignName || `Quick Send - ${selectedTemplate} - ${new Date().toISOString()}`);
+        const requestFormData = new FormData();
+        requestFormData.append('phone_number_id', formData.selectedNumber);
+        requestFormData.append('template_name', formData.selectedTemplate);
+        requestFormData.append('language', formData.selectedLanguage);
+        requestFormData.append('recipients_text', formData.recipients.join('\n'));
+        requestFormData.append('variables', JSON.stringify(formData.templateVariables));
+        requestFormData.append('campaign_name', formData.campaignName || `Quick Send - ${formData.selectedTemplate} - ${new Date().toISOString()}`);
         
-        if (headerImage) {
-          formData.append('headerImage', headerImage);
+        if (formData.headerImage) {
+          requestFormData.append('headerImage', formData.headerImage);
         }
         
-        response = await fetch('/api/whatsapp/quick-send', {
+        fetch('/api/whatsapp/quick-send', {
           method: 'POST',
           credentials: 'include',
-          body: formData
+          body: requestFormData
+        }).catch(error => {
+          console.error('Background bulk send error:', error);
         });
       } else {
         // Use JSON for regular requests
         const payload = {
-          phone_number_id: selectedNumber,
-          template_name: selectedTemplate,
-          language: selectedLanguage,
-          recipients_text: recipients.join('\n'),
-          variables: templateVariables,
-          campaign_name: campaignName || `Quick Send - ${selectedTemplate} - ${new Date().toISOString()}`
+          phone_number_id: formData.selectedNumber,
+          template_name: formData.selectedTemplate,
+          language: formData.selectedLanguage,
+          recipients_text: formData.recipients.join('\n'),
+          variables: formData.templateVariables,
+          campaign_name: formData.campaignName || `Quick Send - ${formData.selectedTemplate} - ${new Date().toISOString()}`
         };
 
-        response = await fetch('/api/whatsapp/quick-send', {
+        fetch('/api/whatsapp/quick-send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify(payload)
+        }).catch(error => {
+          console.error('Background bulk send error:', error);
         });
-      }
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        setSuccessModal({
-          show: true,
-          title: 'Campaign Completed Successfully!',
-          message: `Your campaign has been completed successfully. You can check detailed reports for more information.`,
-          successCount: data.successful_sends || 0,
-          failedCount: data.failed_sends || 0
-        });
-        
-        // Reset form
-        resetForm();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || 'Bulk send failed');
       }
     } catch (error) {
-      console.error('Error with bulk quick send:', error);
-      setAlertState({
-        show: true,
-        type: 'error',
-        title: 'Bulk send failed',
-        message: error instanceof Error ? error.message : 'Please try again'
-      });
-    } finally {
-      setLoading(prev => ({ ...prev, sending: false }));
+      console.error('Error initiating bulk campaign:', error);
+      // Note: We don't show user error here since campaign is "started" from UI perspective
     }
   };
 
@@ -1341,14 +1340,10 @@ export default function WhatsAppBulkMessaging() {
           <div className="flex justify-center">
             <Button
               onClick={handleQuickSend}
-              disabled={!selectedNumber || !selectedTemplate || recipients.length === 0 || loading.sending}
+              disabled={!selectedNumber || !selectedTemplate || recipients.length === 0}
               className="w-full h-14 bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-800 hover:to-emerald-900 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
             >
-              {loading.sending ? (
-                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5 mr-2" />
-              )}
+              <Send className="h-5 w-5 mr-2" />
               {recipients.length > 50 ? 'Bulk Send' : 'Quick Send'} ({recipients.length})
             </Button>
           </div>
@@ -1550,26 +1545,15 @@ export default function WhatsAppBulkMessaging() {
                   variant="outline"
                   onClick={() => setShowPricingModal(false)}
                   className="flex-1"
-                  disabled={loading.sending}
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={confirmAndSend}
-                  disabled={loading.sending}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
-                  {loading.sending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Confirm & Send (₹{calculatedCost.toFixed(2)})
-                    </>
-                  )}
+                  <Send className="h-4 w-4 mr-2" />
+                  Confirm & Send (₹{calculatedCost.toFixed(2)})
                 </Button>
               </div>
 
