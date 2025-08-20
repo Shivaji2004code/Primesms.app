@@ -745,4 +745,83 @@ router.get('/templates/pending', async (req, res) => {
   }
 });
 
+// Admin password change endpoint - allows admin to change any user's password
+router.post('/users/:id/change-password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+    const adminUser = req.session.user!;
+
+    // Validation
+    if (!newPassword) {
+      return res.status(400).json({ error: 'New password is required' });
+    }
+
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    // Check if target user exists
+    const userCheck = await pool.query(
+      'SELECT id, username, name, email FROM users WHERE id = $1', 
+      [id]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const targetUser = userCheck.rows[0];
+
+    // Update password in database (stored as plain text as per current system design)
+    await pool.query(
+      'UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [newPassword, id]
+    );
+
+    // Log the password change action for security audit
+    console.log(`🔒 ADMIN PASSWORD CHANGE: Admin ${adminUser.username} (ID: ${adminUser.id}) changed password for user ${targetUser.username} (ID: ${targetUser.id}) at ${new Date().toISOString()}`);
+
+    // Insert audit log into database for production security tracking
+    try {
+      await pool.query(
+        `INSERT INTO admin_actions (admin_user_id, action_type, target_type, target_id, details, created_at) 
+         VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
+        [
+          adminUser.id,
+          'PASSWORD_CHANGE',
+          'USER',
+          id,
+          JSON.stringify({
+            admin_username: adminUser.username,
+            target_username: targetUser.username,
+            target_email: targetUser.email,
+            target_name: targetUser.name,
+            timestamp: new Date().toISOString(),
+            action: 'Admin changed user password'
+          })
+        ]
+      );
+    } catch (auditError) {
+      // Continue even if audit logging fails, but log the error
+      console.error('⚠️  Failed to create audit log entry:', auditError);
+    }
+
+    res.json({
+      success: true,
+      message: `Password successfully changed for user ${targetUser.name}`,
+      user: {
+        id: targetUser.id,
+        username: targetUser.username,
+        name: targetUser.name,
+        email: targetUser.email
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin password change error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

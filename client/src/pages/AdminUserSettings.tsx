@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, X, Eye, EyeOff, User as UserIcon, Building } from 'lucide-react';
+import { ArrowLeft, Save, X, Eye, EyeOff, User as UserIcon, Building, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,15 @@ export default function AdminUserSettings() {
   });
 
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
+  // Password change states
+  const [passwordFormData, setPasswordFormData] = useState({
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     fetchUserDetails();
@@ -198,6 +207,75 @@ export default function AdminUserSettings() {
     if (successMessage) setSuccessMessage('');
   };
 
+  const handlePasswordInputChange = (field: string, value: string) => {
+    setPasswordFormData(prev => ({ ...prev, [field]: value }));
+
+    // Clear field error
+    if (formErrors[field]) {
+      setFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+
+    // Clear messages
+    if (error) setError('');
+    if (successMessage) setSuccessMessage('');
+  };
+
+  const handlePasswordChange = async () => {
+    if (!passwordFormData.newPassword || !passwordFormData.confirmPassword) {
+      setFormErrors({ passwordGeneral: 'Both password fields are required' });
+      return;
+    }
+
+    if (passwordFormData.newPassword.length < 6) {
+      setFormErrors({ newPassword: 'Password must be at least 6 characters long' });
+      return;
+    }
+
+    if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+      setFormErrors({ confirmPassword: 'Passwords do not match' });
+      return;
+    }
+
+    if (!id) return;
+
+    setIsChangingPassword(true);
+    setError('');
+    setSuccessMessage('');
+    setFormErrors({});
+
+    try {
+      const response = await fetch(`/api/admin/users/${id}/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          newPassword: passwordFormData.newPassword
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to change password');
+      }
+
+      const data = await response.json();
+      setSuccessMessage(`Password successfully changed for ${data.user.name}`);
+      
+      // Reset password form
+      setPasswordFormData({
+        newPassword: '',
+        confirmPassword: ''
+      });
+
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to change password');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout 
@@ -268,7 +346,7 @@ export default function AdminUserSettings() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="basic" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:w-96">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
             <TabsTrigger value="basic" className="flex items-center space-x-2">
               <UserIcon className="h-4 w-4" />
               <span>Basic Information</span>
@@ -276,6 +354,10 @@ export default function AdminUserSettings() {
             <TabsTrigger value="business" className="flex items-center space-x-2">
               <Building className="h-4 w-4" />
               <span>WhatsApp Business</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center space-x-2">
+              <Shield className="h-4 w-4" />
+              <span>Security</span>
             </TabsTrigger>
           </TabsList>
 
@@ -565,6 +647,132 @@ export default function AdminUserSettings() {
                         <span className="font-semibold text-gray-800">Updated:</span>
                         <p>{new Date(userDetails.businessInfo.updatedAt).toLocaleDateString()}</p>
                       </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Security Tab */}
+          <TabsContent value="security" className="space-y-6">
+            <Card className="shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b">
+                <CardTitle className="flex items-center space-x-2 text-gray-800">
+                  <Shield className="h-5 w-5 text-red-600" />
+                  <span>Security & Password Management</span>
+                </CardTitle>
+                <CardDescription>
+                  Change user password and manage security settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 text-yellow-800 mb-2">
+                    <Shield className="h-4 w-4" />
+                    <span className="font-semibold">Security Warning</span>
+                  </div>
+                  <p className="text-sm text-yellow-700">
+                    You are about to change this user's password. This action will be logged for security auditing.
+                    The user will need to use the new password for their next login.
+                  </p>
+                </div>
+
+                {formErrors.passwordGeneral && (
+                  <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center">
+                    <X className="h-5 w-5 mr-2 text-red-500" />
+                    {formErrors.passwordGeneral}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 mb-2 block">New Password *</label>
+                    <div className="relative">
+                      <Input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={passwordFormData.newPassword}
+                        onChange={(e) => handlePasswordInputChange('newPassword', e.target.value)}
+                        className={`pr-12 transition-all ${formErrors.newPassword ? 'border-red-300 focus:ring-red-200' : 'focus:ring-red-200'}`}
+                        placeholder="Enter new password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {formErrors.newPassword && (
+                      <p className="text-sm text-red-600 mt-2 flex items-center">
+                        <X className="h-4 w-4 mr-1" />
+                        {formErrors.newPassword}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Password must be at least 6 characters long
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Confirm Password *</label>
+                    <div className="relative">
+                      <Input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={passwordFormData.confirmPassword}
+                        onChange={(e) => handlePasswordInputChange('confirmPassword', e.target.value)}
+                        className={`pr-12 transition-all ${formErrors.confirmPassword ? 'border-red-300 focus:ring-red-200' : 'focus:ring-red-200'}`}
+                        placeholder="Confirm new password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {formErrors.confirmPassword && (
+                      <p className="text-sm text-red-600 mt-2 flex items-center">
+                        <X className="h-4 w-4 mr-1" />
+                        {formErrors.confirmPassword}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800">Password Change Action</h4>
+                      <p className="text-xs text-gray-600 mt-1">This action will be logged in the admin audit trail</p>
+                    </div>
+                    <Button
+                      onClick={handlePasswordChange}
+                      disabled={isChangingPassword || !passwordFormData.newPassword || !passwordFormData.confirmPassword}
+                      className="bg-red-600 hover:bg-red-700 text-white px-6"
+                    >
+                      {isChangingPassword ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Changing...
+                        </>
+                      ) : (
+                        <>
+                          <Shield className="h-4 w-4 mr-2" />
+                          Change Password
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {userDetails && (
+                  <div className="pt-6 border-t bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
+                    <div className="text-sm text-gray-600">
+                      <span className="font-semibold text-gray-800">Last Password Change:</span>
+                      <p>Password changes are not tracked historically. This feature logs all admin password changes for security auditing.</p>
                     </div>
                   </div>
                 )}
