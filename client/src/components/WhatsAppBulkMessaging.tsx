@@ -107,6 +107,7 @@ export default function WhatsAppBulkMessaging() {
   const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({});
   const [templatePreview, setTemplatePreview] = useState<string>('');
   const [campaignPreview, setCampaignPreview] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<string>('manual');
   
   // Pricing modal state
   const [showPricingModal, setShowPricingModal] = useState<boolean>(false);
@@ -441,6 +442,9 @@ export default function WhatsAppBulkMessaging() {
           // Auto-parse recipients immediately after setting the text
           parseRecipientsFromText(numbersText);
           
+          // Switch to manual tab to show the imported numbers
+          setActiveTab('manual');
+          
           setAlertState({
             show: true,
             type: 'success',
@@ -497,6 +501,9 @@ export default function WhatsAppBulkMessaging() {
       
       // Auto-parse recipients immediately after setting the text
       parseRecipientsFromText(numbersText);
+      
+      // Switch to manual tab to show the imported numbers
+      setActiveTab('manual');
       
       setAlertState({
         show: true,
@@ -1081,7 +1088,7 @@ export default function WhatsAppBulkMessaging() {
                 />
               </div>
 
-              <Tabs defaultValue="manual" className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="manual">Manual Entry</TabsTrigger>
                   <TabsTrigger value="file">File Upload</TabsTrigger>
