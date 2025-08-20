@@ -1,4 +1,4 @@
-import DashboardLayout from '../components/layout/DashboardLayout';
+import { Link } from 'react-router-dom';
 
 export default function Terms() {
   return (
@@ -11,6 +11,11 @@ export default function Terms() {
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-emerald-700 bg-clip-text text-transparent">Prime SMS</span>
           </div>
+          <nav className="hidden lg:flex items-center space-x-8">
+            <Link to="/" className="text-gray-600 hover:text-emerald-600 font-medium transition-colors">Home</Link>
+            <Link to="/docs" className="text-gray-600 hover:text-emerald-600 font-medium transition-colors">Docs</Link>
+            <Link to="/login" className="text-gray-600 hover:text-emerald-600 font-medium transition-colors">Sign In</Link>
+          </nav>
         </div>
       </header>
 
@@ -123,6 +128,10 @@ export default function Terms() {
                 Continued use of our services after changes indicates your acceptance of the updated terms. 
                 For any legal disputes, the jurisdiction will be Hyderabad, Telangana, India.
               </p>
+            </div>
+            {/* Back links */}
+            <div className="mt-10 text-sm text-gray-600">
+              <Link to="/" className="text-emerald-700">← Back to home</Link>
             </div>
           </div>
         </div>
