@@ -3,7 +3,6 @@ import {
   LayoutDashboard, 
   FileText, 
   Send, 
-  LifeBuoy,
   MessageSquare,
   Settings,
   BarChart3,
@@ -66,11 +65,6 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
       icon: BarChart3
     },
     {
-      name: 'Support',
-      path: '/user/support',
-      icon: LifeBuoy
-    },
-    {
       name: 'Profile',
       path: '/user/profile',
       icon: User
@@ -92,11 +86,6 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
       name: 'Log Management',
       path: '/admin/logs',
       icon: Trash2
-    },
-    {
-      name: 'Support',
-      path: '/admin/support',
-      icon: LifeBuoy
     },
     {
       name: 'Profile',

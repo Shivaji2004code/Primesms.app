@@ -8,7 +8,6 @@ import {
   LogOut,
   MessageSquare,
   FileText,
-  HelpCircle,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -39,7 +38,6 @@ const userNavItems = [
   { icon: Home, label: 'Dashboard', href: '/user/dashboard' },
   { icon: FileText, label: 'Templates', href: '/user/templates' },
   { icon: MessageSquare, label: 'WhatsApp Bulk', href: '/user/whatsapp-bulk' },
-  { icon: HelpCircle, label: 'Support', href: '/user/support' },
 ];
 
 export default function Navigation({ user, onLogout }: NavigationProps) {
@@ -93,10 +91,6 @@ export default function Navigation({ user, onLogout }: NavigationProps) {
                 <DropdownMenuItem onClick={() => navigate('/user/settings')}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/user/support')}>
-                  <HelpCircle className="mr-2 h-4 w-4" />
-                  <span>Support</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onLogout}>

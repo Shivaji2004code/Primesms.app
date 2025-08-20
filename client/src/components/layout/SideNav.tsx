@@ -3,7 +3,6 @@ import {
   LayoutDashboard, 
   FileText, 
   Send, 
-  LifeBuoy,
   MessageSquare,
   Settings,
   BarChart3,
@@ -61,11 +60,6 @@ export default function SideNav() {
       icon: BarChart3
     },
     {
-      name: 'Support',
-      path: '/user/support',
-      icon: LifeBuoy
-    },
-    {
       name: 'Profile',
       path: '/user/profile',
       icon: User
@@ -87,11 +81,6 @@ export default function SideNav() {
       name: 'Log Management',
       path: '/admin/logs',
       icon: Trash2
-    },
-    {
-      name: 'Support',
-      path: '/admin/support',
-      icon: LifeBuoy
     },
     {
       name: 'Profile',

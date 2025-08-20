@@ -42,7 +42,6 @@ export default function Header({ title, subtitle }: HeaderProps) {
     if (path.includes('/dashboard')) return 'Dashboard';
     if (path.includes('/templates')) return 'Templates';
     if (path.includes('/whatsapp-bulk')) return 'WhatsApp Bulk Messaging';
-    if (path.includes('/support')) return 'Support';
     if (path.includes('/users')) return 'User Management';
     return 'Dashboard';
   };
@@ -55,7 +54,6 @@ export default function Header({ title, subtitle }: HeaderProps) {
     if (path.includes('/dashboard')) return 'Here\'s what\'s happening with your WhatsApp campaigns today.';
     if (path.includes('/templates')) return 'Create, edit, and manage your message templates.';
     if (path.includes('/whatsapp-bulk')) return 'Send bulk messages to multiple recipients.';
-    if (path.includes('/support')) return 'Get help and support for your account.';
     if (path.includes('/users')) return 'Manage user accounts and permissions.';
     return isAdmin ? 'Admin Panel' : 'WhatsApp Business Platform';
   };

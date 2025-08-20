@@ -26,7 +26,6 @@ import CreateTemplateWrapper from './components/CreateTemplateWrapper';
 import WhatsAppBulkMessagingPage from './pages/WhatsAppBulkMessaging';
 import CustomizeMessage from './pages/CustomizeMessage';
 import ManageReports from './pages/ManageReports';
-import Support from './pages/Support';
 import APIManagement from './pages/APIManagement';
 import Privacy from './pages/Privacy';
 import RefundPolicy from './pages/RefundPolicy';
@@ -179,14 +178,6 @@ function App() {
             element={
               <UserRoute>
                 <ManageReports />
-              </UserRoute>
-            } 
-          />
-          <Route 
-            path="/user/support" 
-            element={
-              <UserRoute>
-                <Support />
               </UserRoute>
             } 
           />
