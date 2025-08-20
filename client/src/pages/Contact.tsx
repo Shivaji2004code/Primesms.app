@@ -26,20 +26,23 @@ export default function Contact() {
             <p className="text-gray-600">Get in touch with our team</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-            <div className="space-y-4 text-left">
+          <div className="group relative">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-400/20 via-emerald-500/20 to-cyan-500/20 blur-md transition-all duration-300 group-hover:blur-lg"></div>
+            <div className="relative bg-white rounded-2xl shadow-lg border border-gray-200/80 p-8 sm:p-10 transition-all duration-300 group-hover:-translate-y-0.5">
+              <div className="space-y-4 text-left">
               <div>
                 <p className="text-gray-900 font-medium">M/S PRIME SMS,</p>
                 <p className="text-gray-700">16-11-477/6/3,#101</p>
                 <p className="text-gray-700">SNEHA PRASHANTH RESIDENCY, DILSUKH NAGAR ,HYDERABAD-500036</p>
               </div>
-              
-              <div>
-                <p className="text-gray-900 font-medium">Phone : +91 9160352125</p>
-              </div>
-              
-              <div>
-                <p className="text-gray-900 font-medium">E-Mail : shivaji@primesms.app</p>
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                <div>
+                  <p className="text-gray-900 font-medium">Phone : +91 9160352125</p>
+                </div>
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                <div>
+                  <p className="text-gray-900 font-medium">E-Mail : shivaji@primesms.app</p>
+                </div>
               </div>
             </div>
           </div>
