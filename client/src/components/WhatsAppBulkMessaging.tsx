@@ -1623,7 +1623,7 @@ export default function WhatsAppBulkMessaging() {
               {/* Simple Footer */}
               <div className="text-center mt-4">
                 <p className="text-xs text-gray-500">
-                  Campaign completed successfully
+                  Campaign started successfully
                 </p>
               </div>
             </div>
