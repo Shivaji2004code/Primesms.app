@@ -31,6 +31,7 @@ import APIManagement from './pages/APIManagement';
 import Privacy from './pages/Privacy';
 import RefundPolicy from './pages/RefundPolicy';
 import Docs from './pages/Docs';
+import Contact from './pages/Contact';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -54,6 +55,7 @@ function App() {
           {/* Public routes - use old Layout */}
           <Route path="/" element={<Layout><Landing /></Layout>} />
           <Route path="/docs" element={<Layout><Docs /></Layout>} />
+          <Route path="/contact" element={<Layout><Contact /></Layout>} />
           <Route path="/login" element={<Layout><Login /></Layout>} />
           <Route path="/signup" element={<Layout><Signup /></Layout>} />
           

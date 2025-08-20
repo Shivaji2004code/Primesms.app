@@ -22,8 +22,7 @@ export default function Docs() {
       <main className="py-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-10">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Prime SMS — WhatsApp-Only Feature Guide</h1>
-            <p className="text-sm text-gray-500">Last updated: August 20, 2025 • Product: Prime SMS (Business messaging over WhatsApp)</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Prime SMS </h1>
           </div>
 
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg p-4 mb-8">

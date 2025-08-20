@@ -20,7 +20,7 @@ export default function Landing() {
             <nav className="hidden lg:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-emerald-600 font-medium">Features</a>
               <Link to="/docs" className="text-gray-600 hover:text-emerald-600 font-medium">Docs</Link>
-              <a href="#support" className="text-gray-600 hover:text-emerald-600 font-medium">Support</a>
+              <Link to="/contact" className="text-gray-600 hover:text-emerald-600 font-medium">Contact Us</Link>
             </nav>
             
             <div className="flex items-center space-x-2 sm:space-x-4">
@@ -459,10 +459,10 @@ export default function Landing() {
             <div>
               <h3 className="text-lg font-semibold mb-4 text-white">Features</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">WhatsApp API</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Bulk Messaging</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Template Builder</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Real-time Reports</a></li>
+                <li>WhatsApp API</li>
+                <li>Bulk Messaging</li>
+                <li>Template Builder</li>
+                <li>Real-time Reports</li>
               </ul>
             </div>
             
@@ -470,9 +470,9 @@ export default function Landing() {
             <div>
               <h3 className="text-lg font-semibold mb-4 text-white">Resources</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link to="/docs" className="hover:text-emerald-400 transition-colors">Documentation</Link></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">API Reference</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Support</a></li>
+                <li>Documentation</li>
+                <li>API Reference</li>
+                <li>Support</li>
               </ul>
             </div>
             
@@ -480,7 +480,7 @@ export default function Landing() {
             <div>
               <h3 className="text-lg font-semibold mb-4 text-white">Company</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Contact</a></li>
+                <li><Link to="/contact" className="hover:text-emerald-400 transition-colors">Contact</Link></li>
               </ul>
             </div>
           </div>
