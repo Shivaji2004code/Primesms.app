@@ -721,7 +721,7 @@ export default function CustomizeMessage() {
               </div>
 
               {/* Simple Cards Layout */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="text-2xl font-bold text-blue-600">{excelData.length}</div>
                   <div className="text-sm text-blue-800">Recipients</div>
@@ -863,7 +863,7 @@ export default function CustomizeMessage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Step 1: WhatsApp Configuration */}
@@ -895,7 +895,7 @@ export default function CustomizeMessage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="whatsapp-number" className="text-sm font-semibold text-gray-700">WhatsApp Business Number *</Label>
                     <Select value={selectedWabaId} onValueChange={setSelectedWabaId}>
@@ -1109,7 +1109,7 @@ export default function CustomizeMessage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {templateVariables.map((variable) => (
-                    <div key={variable} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div key={variable} className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       <div className="space-y-2">
                         <Label className="text-sm font-semibold text-gray-700">Template Variable</Label>
                         <div className="p-3 bg-gray-100 rounded-lg border-2 border-gray-200 text-sm font-mono">
@@ -1184,7 +1184,7 @@ export default function CustomizeMessage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="text-center p-4 bg-white rounded-lg border border-emerald-200 shadow-sm">
                     <div className="text-3xl font-bold text-emerald-600">{excelData.length}</div>
                     <div className="text-sm text-gray-600">Recipients</div>

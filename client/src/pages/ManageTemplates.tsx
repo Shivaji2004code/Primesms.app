@@ -516,7 +516,7 @@ export default function ManageTemplates({ currentUser }: ManageTemplatesProps) {
           </DialogHeader>
           {viewTemplateDialog.template && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">Name</label>
                   <p className="text-sm text-gray-900">{viewTemplateDialog.template.name}</p>

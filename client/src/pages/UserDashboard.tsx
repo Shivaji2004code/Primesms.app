@@ -122,8 +122,8 @@ export default function UserDashboard() {
     >
       {/* Header Stats Section */}
       <FadeIn>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6 lg:mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 lg:gap-8">
           {/* Left side - Welcome */}
           <div className="flex-1">
             <div className="flex items-center gap-4 mb-4">
@@ -131,7 +131,7 @@ export default function UserDashboard() {
                 <MessageSquare className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                   Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {user?.name}!
                 </h1>
                 <p className="text-gray-600">{formatDate(currentTime)} • {formatTime(currentTime)}</p>
@@ -159,10 +159,10 @@ export default function UserDashboard() {
           <FadeIn delay={0.05}>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
             {/* Header */}
-            <div className="px-8 py-6 border-b border-gray-100">
+            <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Quick Actions</h2>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">Quick Actions</h2>
                   <p className="text-gray-600 mt-1">Get started with common tasks</p>
                 </div>
                 <Button 
@@ -178,8 +178,8 @@ export default function UserDashboard() {
             </div>
 
             {/* Actions Grid */}
-            <div className="p-8">
-              <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 sm:p-6 lg:p-8">
+              <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {quickActions.map((action, idx) => {
                   const Icon = action.icon;
                   return (

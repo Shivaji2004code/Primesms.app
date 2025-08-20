@@ -910,9 +910,9 @@ export default function WhatsAppBulkMessaging() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 lg:space-y-6">
           {/* Step 1: WhatsApp Configuration */}
           <Card className={`border-2 ${getStepStatus(1) === 'completed' ? 'border-green-200 bg-green-50' : getStepStatus(1) === 'current' ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200'}`}>
             <CardHeader>
@@ -942,7 +942,7 @@ export default function WhatsAppBulkMessaging() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="whatsapp-number" className="text-sm font-medium">WhatsApp Business Number *</Label>
                   <Select 
@@ -1349,7 +1349,7 @@ export default function WhatsAppBulkMessaging() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="text-center p-3 bg-white rounded-lg border border-emerald-200">
                   <div className="text-2xl font-bold text-emerald-600">{recipients.length}</div>
                   <div className="text-sm text-gray-600">Recipients</div>
@@ -1478,7 +1478,7 @@ export default function WhatsAppBulkMessaging() {
               </div>
 
               {/* Simple Cards Layout */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="text-2xl font-bold text-blue-600">{recipients.length}</div>
                   <div className="text-sm text-blue-800">Recipients</div>

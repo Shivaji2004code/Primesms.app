@@ -69,16 +69,18 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
         <Header title={title} subtitle={subtitle} />
         
         {/* Main Content */}
-        <main className="flex-1 w-full p-8 space-y-8 overflow-auto max-w-screen-xl mx-auto">
-          {children}
+        <main className="flex-1 w-full p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 lg:space-y-8 overflow-auto">
+          <div className="max-w-screen-xl mx-auto w-full">
+            {children}
+          </div>
         </main>
         
         {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 px-8 py-4">
-          <div className="w-full">
+        <footer className="bg-white border-t border-gray-200 px-4 sm:px-6 lg:px-8 py-4 safe-bottom">
+          <div className="max-w-screen-xl mx-auto">
             <div className="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
-              <div className="flex items-center space-x-4">
-                <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-purple-600 rounded-md flex items-center justify-center">
+              <div className="flex items-center space-x-3">
+                <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-purple-600 rounded-md flex items-center justify-center shrink-0">
                   <span className="text-white text-xs font-bold">P</span>
                 </div>
                 <div>

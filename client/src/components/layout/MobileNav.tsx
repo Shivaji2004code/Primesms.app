@@ -5,6 +5,11 @@ import {
   Send, 
   LifeBuoy,
   MessageSquare,
+  Settings,
+  BarChart3,
+  Code,
+  User,
+  Trash2,
   X
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -36,19 +41,39 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
       icon: LayoutDashboard
     },
     {
+      name: 'WhatsApp Quick Send',
+      path: '/user/whatsapp-bulk',
+      icon: Send
+    },
+    {
+      name: 'API Management',
+      path: '/user/api-management',
+      icon: Code
+    },
+    {
+      name: 'Customize Message',
+      path: '/user/customize-message',
+      icon: Settings
+    },
+    {
       name: 'Templates',
       path: '/user/templates',
       icon: FileText
     },
     {
-      name: 'WhatsApp Bulk',
-      path: '/user/whatsapp-bulk',
-      icon: Send
+      name: 'Manage Reports',
+      path: '/user/manage-reports',
+      icon: BarChart3
     },
     {
       name: 'Support',
       path: '/user/support',
       icon: LifeBuoy
+    },
+    {
+      name: 'Profile',
+      path: '/user/profile',
+      icon: User
     }
   ];
 
@@ -64,9 +89,19 @@ export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
       icon: FileText
     },
     {
+      name: 'Log Management',
+      path: '/admin/logs',
+      icon: Trash2
+    },
+    {
       name: 'Support',
       path: '/admin/support',
       icon: LifeBuoy
+    },
+    {
+      name: 'Profile',
+      path: '/admin/profile',
+      icon: User
     }
   ];
 
