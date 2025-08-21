@@ -32,6 +32,7 @@ import RefundPolicy from './pages/RefundPolicy';
 import Terms from './pages/Terms';
 import Docs from './pages/Docs';
 import Contact from './pages/Contact';
+import WalletTopUpDemo from './pages/WalletTopUpDemo';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -178,6 +179,14 @@ function App() {
             element={
               <UserRoute>
                 <ManageReports />
+              </UserRoute>
+            } 
+          />
+          <Route 
+            path="/user/wallet-demo" 
+            element={
+              <UserRoute>
+                <WalletTopUpDemo />
               </UserRoute>
             } 
           />
