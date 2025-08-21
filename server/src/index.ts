@@ -528,6 +528,14 @@ app.get('/api', (req, res) => {
   });
 });
 
+// Force refresh endpoint - serves fresh index.html with no cache
+app.get('/refresh', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(clientDir, 'index.html'));
+});
+
 // API 404 (keep logs clear)
 app.use('/api', (req, res) => {
   return res.status(404).json({ error: 'ROUTE_NOT_FOUND', path: req.originalUrl });
@@ -557,6 +565,8 @@ app.use(express.static(clientDir, {
     } else if (filePath.endsWith('.html')) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
     } else if (filePath.endsWith('.svg')) {
       res.setHeader('Content-Type', 'image/svg+xml');
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
