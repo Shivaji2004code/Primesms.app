@@ -1166,121 +1166,81 @@ export default function WhatsAppBulkMessaging() {
                 />
               </div>
 
-              {/* File Upload and Manual Entry Section */}
-              <div className="space-y-6">
-                {/* Beautiful File Upload Section */}
-                <div className="space-y-4">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <Upload className="h-4 w-4 text-emerald-600" />
-                    Import Phone Numbers
+              {/* Modern Phone Numbers Input Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-900">
+                    Phone Numbers
                   </Label>
-                  
-                  {/* Attractive File Upload Area */}
-                  <div className="relative">
+                  <div className="flex items-center gap-2">
                     <input
                       type="file"
                       accept=".csv,.xlsx,.xls"
                       onChange={handleFileUpload}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      className="hidden"
                       id="file-upload-input"
                     />
-                    <div className="border-2 border-dashed border-emerald-300 rounded-xl p-8 bg-gradient-to-br from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 transition-all duration-300 text-center group hover:border-emerald-400">
-                      <div className="flex flex-col items-center space-y-4">
-                        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                          <Upload className="h-8 w-8 text-emerald-600" />
-                        </div>
-                        <div className="space-y-2">
-                          <h3 className="text-lg font-semibold text-gray-900">Upload your file</h3>
-                          <p className="text-sm text-gray-600">Drop your CSV or Excel file here, or click to browse</p>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                            <FileText className="h-3 w-3 mr-1" />
-                            CSV Files
-                          </Badge>
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            <FileText className="h-3 w-3 mr-1" />
-                            Excel Files
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Supported formats: .csv, .xlsx, .xls • Max size: 10MB
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Alternative Upload Button */}
-                  <div className="flex justify-center">
-                    <label htmlFor="file-upload-input" className="cursor-pointer">
+                    <label htmlFor="file-upload-input">
                       <Button
                         type="button"
                         variant="outline"
-                        className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 shadow-sm"
+                        size="sm"
+                        className="text-xs font-medium border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
                         asChild
                       >
-                        <span>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Choose File to Upload
+                        <span className="flex items-center gap-1.5">
+                          <Upload className="h-3.5 w-3.5" />
+                          Import
                         </span>
                       </Button>
                     </label>
+                    {recipients.length > 0 && (
+                      <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                        {recipients.length} numbers
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Enhanced Manual Entry Field */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="manual-recipients" className="text-sm font-medium flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-emerald-600" />
-                      Phone Numbers *
-                    </Label>
-                    {recipients.length > 0 && (
-                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        {recipients.length} numbers detected
-                      </Badge>
-                    )}
-                  </div>
                   
-                  <div className="relative">
-                    <Textarea
-                      id="manual-recipients"
-                      value={manualRecipients}
-                      onChange={(e) => handleManualRecipientsChange(e.target.value)}
-                      placeholder="Type or paste phone numbers here:\n\n919876543210\n918765432109\n917654321098\n\n📝 Tip: Numbers are automatically detected as you type!\n🔄 You can also upload CSV/Excel files above."
-                      className="mt-1 min-h-[120px] bg-gray-50 border-gray-300 focus:bg-white transition-colors resize-none"
-                      rows={8}
-                    />
-                    {/* Live indicator */}
-                    {manualRecipients && (
-                      <div className="absolute top-3 right-3">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Sparkles className="h-3 w-3 text-emerald-600" />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium text-emerald-800">
-                          ⚡ Auto-Processing Active
-                        </p>
-                        <p className="text-xs text-emerald-700">
-                          Numbers are automatically detected and validated as you type or upload files!
-                        </p>
-                        <div className="text-xs text-emerald-600 mt-2 space-y-1">
-                          <div>• Include country code (91 for India, 1 for US, etc.)</div>
-                          <div>• Use one number per line or separate with commas</div>
-                          <div>• Upload CSV/Excel files for bulk import</div>
+                <div className="relative">
+                  <Textarea
+                    id="manual-recipients"
+                    value={manualRecipients}
+                    onChange={(e) => handleManualRecipientsChange(e.target.value)}
+                    placeholder=""
+                    className="min-h-[140px] resize-none border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200 text-sm leading-relaxed"
+                  />
+                  {manualRecipients === '' && (
+                    <div className="absolute inset-0 flex items-start justify-start p-3 pointer-events-none">
+                      <div className="text-gray-400 text-sm leading-relaxed">
+                        <div className="mb-2">Enter phone numbers (one per line):</div>
+                        <div className="text-gray-300 font-mono text-xs space-y-0.5">
+                          <div>919876543210</div>
+                          <div>918765432109</div>
+                          <div>917654321098</div>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-3">
+                          Or click Import to upload CSV/Excel files
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
+                  {manualRecipients && (
+                    <div className="absolute top-2 right-2">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                    </div>
+                  )}
                 </div>
+                
+                {recipients.length > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <span className="text-green-800 font-medium">{recipients.length} valid numbers</span>
+                      <span className="text-green-600">ready to send</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Recipients Summary - No individual list */}
