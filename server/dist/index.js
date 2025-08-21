@@ -39,6 +39,64 @@ exports.app = app;
 app.set('trust proxy', 1);
 app.use(health_1.default);
 console.log('[HEALTH] Health endpoints mounted FIRST - always accessible');
+const clientStaticDir = path_1.default.resolve(__dirname, './client-static');
+const clientBuildDir = path_1.default.resolve(__dirname, '../client-build');
+let clientDir;
+try {
+    const fs = require('fs');
+    logger_1.logger.info(`Checking client directories:`);
+    logger_1.logger.info(`  clientStaticDir: ${clientStaticDir} - exists: ${fs.existsSync(clientStaticDir)}`);
+    logger_1.logger.info(`  clientBuildDir: ${clientBuildDir} - exists: ${fs.existsSync(clientBuildDir)}`);
+    if (fs.existsSync(clientStaticDir)) {
+        clientDir = clientStaticDir;
+        logger_1.logger.info(`✅ Using client directory: ${clientDir}`);
+        const assetsDir = path_1.default.join(clientDir, 'assets');
+        logger_1.logger.info(`Assets directory: ${assetsDir} - exists: ${fs.existsSync(assetsDir)}`);
+        if (fs.existsSync(assetsDir)) {
+            const assetFiles = fs.readdirSync(assetsDir);
+            logger_1.logger.info(`Assets found: ${assetFiles.join(', ')}`);
+        }
+    }
+    else if (fs.existsSync(clientBuildDir)) {
+        clientDir = clientBuildDir;
+        logger_1.logger.info(`✅ Using client directory: ${clientDir} (fallback to client-build)`);
+        const assetsDir = path_1.default.join(clientDir, 'assets');
+        logger_1.logger.info(`Assets directory: ${assetsDir} - exists: ${fs.existsSync(assetsDir)}`);
+        if (fs.existsSync(assetsDir)) {
+            const assetFiles = fs.readdirSync(assetsDir);
+            logger_1.logger.info(`Assets found: ${assetFiles.join(', ')}`);
+        }
+    }
+    else {
+        throw new Error(`Neither ${clientStaticDir} nor ${clientBuildDir} exists`);
+    }
+}
+catch (error) {
+    logger_1.logger.error(`❌ Error determining client directory: ${error}`);
+    clientDir = clientStaticDir;
+}
+app.use((req, res, next) => {
+    if (req.path.startsWith('/assets')) {
+        logger_1.logger.info(`🎯 Asset request: ${req.method} ${req.path}`);
+    }
+    next();
+});
+app.use('/assets', express_1.default.static(path_1.default.join(clientDir, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            logger_1.logger.info(`✅ Serving JS asset: ${path_1.default.basename(filePath)}`);
+        }
+        else if (filePath.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
+            logger_1.logger.info(`✅ Serving CSS asset: ${path_1.default.basename(filePath)}`);
+        }
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+}));
+console.log('[STATIC] Asset serving mounted SECOND - before all other middleware');
 app.use('/webhooks', express_1.default.json({
     verify: (req, _res, buf) => {
         req.rawBody = Buffer.from(buf);
@@ -223,48 +281,6 @@ app.use('/api', (req, res) => {
 app.get('/templates', auth_2.requireAuthWithRedirect, (req, res) => {
     res.redirect('/api/templates');
 });
-const clientStaticDir = path_1.default.resolve(__dirname, './client-static');
-const clientBuildDir = path_1.default.resolve(__dirname, '../client-build');
-let clientDir;
-try {
-    const fs = require('fs');
-    if (fs.existsSync(clientStaticDir)) {
-        clientDir = clientStaticDir;
-        logger_1.logger.info(`Using client directory: ${clientDir}`);
-    }
-    else if (fs.existsSync(clientBuildDir)) {
-        clientDir = clientBuildDir;
-        logger_1.logger.info(`Using client directory: ${clientDir} (fallback to client-build)`);
-    }
-    else {
-        throw new Error(`Neither ${clientStaticDir} nor ${clientBuildDir} exists`);
-    }
-}
-catch (error) {
-    logger_1.logger.error(`Error determining client directory: ${error}`);
-    clientDir = clientStaticDir;
-}
-app.use((req, res, next) => {
-    if (req.path.startsWith('/assets') || req.path.includes('.js') || req.path.includes('.css')) {
-        logger_1.logger.info(`Asset request: ${req.method} ${req.path}`);
-    }
-    next();
-});
-app.use('/assets', express_1.default.static(path_1.default.join(clientDir, 'assets'), {
-    maxAge: '1y',
-    immutable: true,
-    setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.js')) {
-            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-            logger_1.logger.info(`Serving JS asset: ${filePath} with MIME type: application/javascript`);
-        }
-        else if (filePath.endsWith('.css')) {
-            res.setHeader('Content-Type', 'text/css; charset=utf-8');
-            logger_1.logger.info(`Serving CSS asset: ${filePath} with MIME type: text/css`);
-        }
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    }
-}));
 app.use(express_1.default.static(clientDir, {
     index: false,
     maxAge: '1y',
