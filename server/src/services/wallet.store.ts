@@ -68,25 +68,82 @@ class InMemoryWalletStore implements WalletStore {
     ref: string, 
     description?: string
   ): Promise<void> {
+    const pool = require('../db');
+    
     try {
-      logger.info(`Crediting wallet: userId=${userId}, amount=${amountCredits}, ref=${ref}`);
+      logger.info(`💰 Crediting wallet: userId=${userId}, amount=${amountCredits}, ref=${ref}`);
       
-      // Use the existing credit system to add credits with database persistence
-      const result = await addCredits({
-        userId,
-        amount: amountCredits,
-        transactionType: CreditTransactionType.ADMIN_ADD, // Using admin add for top-ups
-        description: description || `Wallet top-up via Razorpay (${ref})`
-      });
+      // Try using the existing credit system first
+      try {
+        const result = await addCredits({
+          userId,
+          amount: amountCredits,
+          transactionType: CreditTransactionType.PAYMENT_TOPUP,
+          description: description || `Wallet top-up via Razorpay (${ref})`
+        });
+        
+        if (result.success) {
+          logger.info(`💰 ✅ Successfully credited ${amountCredits} credits to user ${userId} via credit system. New balance: ${result.newBalance}. Transaction ID: ${result.transactionId}`);
+          return;
+        } else {
+          logger.warn(`💰 ⚠️ Credit system returned success=false, trying direct database update`);
+        }
+      } catch (creditSystemError) {
+        logger.error(`💰 ❌ Credit system failed:`, creditSystemError);
+        logger.info(`💰 🔄 Attempting direct database credit update as fallback`);
+      }
       
-      if (result.success) {
-        logger.info(`Successfully credited ${amountCredits} credits to user ${userId}. New balance: ${result.newBalance}. Transaction ID: ${result.transactionId}`);
-      } else {
-        throw new Error('Failed to credit wallet through credit system');
+      // Fallback: Direct database update
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        // Get current balance
+        const balanceResult = await client.query(
+          'SELECT credit_balance FROM users WHERE id = $1 FOR UPDATE',
+          [userId]
+        );
+        
+        if (balanceResult.rows.length === 0) {
+          throw new Error(`User ${userId} not found`);
+        }
+        
+        const currentBalance = parseFloat(balanceResult.rows[0].credit_balance || '0');
+        const newBalance = Math.round((currentBalance + amountCredits) * 100) / 100;
+        
+        logger.info(`💰 📊 Direct DB update: User ${userId} balance ${currentBalance} + ${amountCredits} = ${newBalance}`);
+        
+        // Update user balance
+        await client.query(
+          'UPDATE users SET credit_balance = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          [newBalance, userId]
+        );
+        
+        // Insert transaction log (try, but don't fail if table doesn't exist)
+        try {
+          await client.query(
+            `INSERT INTO credit_transactions 
+             (user_id, amount, transaction_type, description, created_at)
+             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+            [userId, amountCredits, 'PAYMENT_TOPUP', description || `Wallet top-up via Razorpay (${ref})`]
+          );
+        } catch (transactionLogError) {
+          logger.warn(`💰 ⚠️ Failed to log transaction, but continuing:`, transactionLogError);
+        }
+        
+        await client.query('COMMIT');
+        
+        logger.info(`💰 ✅ Successfully credited ${amountCredits} credits to user ${userId} via direct DB. New balance: ${newBalance}`);
+        
+      } catch (dbError) {
+        await client.query('ROLLBACK');
+        throw dbError;
+      } finally {
+        client.release();
       }
       
     } catch (error) {
-      logger.error(`Failed to credit wallet for user ${userId}:`, error);
+      logger.error(`💰 ❌ All credit methods failed for user ${userId}:`, error);
       throw error;
     }
   }

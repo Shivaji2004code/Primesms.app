@@ -146,6 +146,8 @@ router.post('/verify', requireAuth, async (req: Request, res: Response) => {
     // Idempotency check
     if (!walletStore.isPaymentProcessed(paymentId)) {
       try {
+        logger.info(`💰 Starting credit wallet process for user ${order.userId}, amount: ${order.amountCredits}, payment: ${paymentId}`);
+        
         // Credit the wallet
         await walletStore.creditWallet(
           order.userId,
@@ -157,14 +159,30 @@ router.post('/verify', requireAuth, async (req: Request, res: Response) => {
         // Mark as processed
         walletStore.markPaymentProcessed(paymentId);
         
-        logger.info(`Successfully credited ${order.amountCredits} credits to user ${userId} for payment ${paymentId}`);
+        logger.info(`💰 ✅ Successfully credited ${order.amountCredits} credits to user ${userId} for payment ${paymentId}`);
       } catch (creditError) {
-        logger.error(`Failed to credit wallet for payment ${paymentId}:`, creditError);
+        logger.error(`💰 ❌ Failed to credit wallet for payment ${paymentId}:`, creditError);
+        logger.error(`💰 ❌ Credit error details:`, {
+          userId: order.userId,
+          amountCredits: order.amountCredits,
+          paymentId,
+          orderId,
+          error: creditError instanceof Error ? creditError.message : String(creditError),
+          stack: creditError instanceof Error ? creditError.stack : undefined
+        });
         return res.status(500).json({
           success: false,
-          error: 'Payment verified but failed to credit wallet. Please contact support.'
+          error: 'Payment verified but failed to credit wallet. Please contact support.',
+          debug: {
+            paymentId,
+            orderId,
+            userId: order.userId,
+            amount: order.amountCredits
+          }
         });
       }
+    } else {
+      logger.info(`💰 ⚠️ Payment ${paymentId} already processed, skipping credit addition`);
     }
 
     // Update order status
