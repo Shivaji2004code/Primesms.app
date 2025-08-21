@@ -31,10 +31,10 @@ router.post('/order', requireAuth, async (req: Request, res: Response) => {
 
     // Validate amount
     const amount = Number(amountCredits);
-    if (!Number.isInteger(amount) || amount < 10000 || amount > 100000) {
+    if (!Number.isInteger(amount) || amount < 1 || amount > 100000) {
       return res.status(400).json({
         success: false,
-        error: 'Amount must be between 10,000 and 1,00,000 credits'
+        error: 'Amount must be between 1 and 1,00,000 credits'
       });
     }
 

@@ -149,7 +149,7 @@ export default function UserDashboard() {
               <div className="text-sm text-gray-600">Available Credits</div>
               <Button
                 size="sm"
-                onClick={() => navigate('/user/wallet-demo')}
+                onClick={() => navigate('/user/wallet')}
                 className="mt-2 bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <CreditCard className="h-3 w-3 mr-1" />
@@ -248,7 +248,7 @@ export default function UserDashboard() {
                   <div className="text-blue-600 text-xs mb-3">Ready to use</div>
                   <Button
                     size="sm"
-                    onClick={() => navigate('/user/wallet-demo')}
+                    onClick={() => navigate('/user/wallet')}
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Zap className="h-3 w-3 mr-1" />

@@ -34,9 +34,9 @@ type TopUpState = {
   isLoading?: boolean;
 };
 
-const PRESET_AMOUNTS = [10000, 20000, 50000, 100000] as const;
+const PRESET_AMOUNTS = [1, 1000, 5000, 10000] as const;
 
-const useTopUp = (initialAmount?: number, min = 10000, max = 100000) => {
+const useTopUp = (initialAmount?: number, min = 1, max = 100000) => {
   const [state, setState] = useState<TopUpState>(() => {
     if (initialAmount && initialAmount >= min && initialAmount <= max) {
       const isPreset = PRESET_AMOUNTS.includes(initialAmount as any);
@@ -113,7 +113,7 @@ const useTopUp = (initialAmount?: number, min = 10000, max = 100000) => {
 export const WalletTopUp: React.FC<WalletTopUpProps> = ({
   initialAmount,
   onCheckout,
-  min = 10000,
+  min = 1,
   max = 100000,
   className
 }) => {
@@ -217,10 +217,10 @@ export const WalletTopUp: React.FC<WalletTopUpProps> = ({
 
             if (verifyData.success) {
               setShowSuccess(true);
+              // Reload the page to refresh balance, then redirect
               setTimeout(() => {
-                setShowSuccess(false);
-                window.location.href = '/user/dashboard';
-              }, 1500);
+                window.location.href = '/user/wallet';
+              }, 2000);
             } else {
               throw new Error(verifyData.error || 'Payment verification failed');
             }
@@ -364,7 +364,7 @@ export const WalletTopUp: React.FC<WalletTopUpProps> = ({
               {selectedType === 'custom' && !amount && (
                 <p id="amount-helper" className="text-xs text-muted-foreground flex items-center gap-1">
                   <Info className="h-3 w-3" />
-                  Enter amount between ₹{formatIndianNumber(min)} and ₹{formatIndianNumber(max)}
+                  Enter amount between ₹{min} and ₹{formatIndianNumber(max)} credits
                 </p>
               )}
 
