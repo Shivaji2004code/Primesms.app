@@ -224,23 +224,76 @@ app.get('/templates', auth_2.requireAuthWithRedirect, (req, res) => {
     res.redirect('/api/templates');
 });
 const clientDir = path_1.default.resolve(__dirname, './client-static');
+app.use('/assets', express_1.default.static(path_1.default.join(clientDir, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            logger_1.logger.info(`Serving JS asset: ${filePath} with MIME type: application/javascript`);
+        }
+        else if (filePath.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
+            logger_1.logger.info(`Serving CSS asset: ${filePath} with MIME type: text/css`);
+        }
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+}));
 app.use(express_1.default.static(clientDir, {
     index: false,
     maxAge: '1y',
     setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.html')) {
+        if (filePath.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        else if (filePath.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        else if (filePath.endsWith('.html')) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+        else if (filePath.endsWith('.svg')) {
+            res.setHeader('Content-Type', 'image/svg+xml');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        else if (filePath.endsWith('.png')) {
+            res.setHeader('Content-Type', 'image/png');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+            res.setHeader('Content-Type', 'image/jpeg');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        else if (filePath.endsWith('.ico')) {
+            res.setHeader('Content-Type', 'image/x-icon');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         }
         else {
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         }
     }
 }));
+app.use((req, res, next) => {
+    logger_1.logger.info(`Request: ${req.method} ${req.path} - User-Agent: ${req.get('User-Agent')?.substring(0, 50)}...`);
+    next();
+});
 app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') ||
-        req.path.startsWith('/health')) {
+        req.path.startsWith('/health') ||
+        req.path.startsWith('/assets') ||
+        req.path.includes('.js') ||
+        req.path.includes('.css') ||
+        req.path.includes('.svg') ||
+        req.path.includes('.png') ||
+        req.path.includes('.jpg') ||
+        req.path.includes('.ico')) {
+        logger_1.logger.info(`Skipping SPA fallback for: ${req.path}`);
         return next();
     }
+    logger_1.logger.info(`Serving SPA fallback for: ${req.path}`);
     res.sendFile(path_1.default.join(clientDir, 'index.html'));
 });
 app.use('*', errorHandler_1.notFoundHandler);
