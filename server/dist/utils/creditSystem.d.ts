@@ -11,7 +11,6 @@ export declare enum CreditTransactionType {
     DEDUCTION_DUPLICATE_BLOCKED = "DEDUCTION_DUPLICATE_BLOCKED",
     ADMIN_ADD = "ADMIN_ADD",
     ADMIN_DEDUCT = "ADMIN_DEDUCT",
-    PAYMENT_TOPUP = "PAYMENT_TOPUP",
     REFUND = "REFUND"
 }
 interface CreditTransaction {

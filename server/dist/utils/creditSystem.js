@@ -25,7 +25,6 @@ var CreditTransactionType;
     CreditTransactionType["DEDUCTION_DUPLICATE_BLOCKED"] = "DEDUCTION_DUPLICATE_BLOCKED";
     CreditTransactionType["ADMIN_ADD"] = "ADMIN_ADD";
     CreditTransactionType["ADMIN_DEDUCT"] = "ADMIN_DEDUCT";
-    CreditTransactionType["PAYMENT_TOPUP"] = "PAYMENT_TOPUP";
     CreditTransactionType["REFUND"] = "REFUND";
 })(CreditTransactionType || (exports.CreditTransactionType = CreditTransactionType = {}));
 function getCreditRate(category) {

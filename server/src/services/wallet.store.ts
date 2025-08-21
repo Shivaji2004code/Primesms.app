@@ -6,6 +6,7 @@
 
 import { logger } from '../utils/logger';
 import { addCredits, CreditTransactionType } from '../utils/creditSystem';
+import pool from '../db';
 
 export type OrderStatus = 'created' | 'paid' | 'failed' | 'expired';
 
@@ -68,8 +69,6 @@ class InMemoryWalletStore implements WalletStore {
     ref: string, 
     description?: string
   ): Promise<void> {
-    const pool = require('../db');
-    
     try {
       logger.info(`💰 Crediting wallet: userId=${userId}, amount=${amountCredits}, ref=${ref}`);
       
@@ -78,7 +77,7 @@ class InMemoryWalletStore implements WalletStore {
         const result = await addCredits({
           userId,
           amount: amountCredits,
-          transactionType: CreditTransactionType.PAYMENT_TOPUP,
+          transactionType: CreditTransactionType.ADMIN_ADD,
           description: description || `Wallet top-up via Razorpay (${ref})`
         });
         
@@ -125,7 +124,7 @@ class InMemoryWalletStore implements WalletStore {
             `INSERT INTO credit_transactions 
              (user_id, amount, transaction_type, description, created_at)
              VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
-            [userId, amountCredits, 'PAYMENT_TOPUP', description || `Wallet top-up via Razorpay (${ref})`]
+            [userId, amountCredits, 'ADMIN_ADD', description || `Wallet top-up via Razorpay (${ref})`]
           );
         } catch (transactionLogError) {
           logger.warn(`💰 ⚠️ Failed to log transaction, but continuing:`, transactionLogError);
