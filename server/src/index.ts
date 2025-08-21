@@ -359,7 +359,35 @@ app.get('/templates', requireAuthWithRedirect, (req, res) => {
 // ============================================================================
 
 // Where the built client will be placed by the build step
-const clientDir = path.resolve(__dirname, './client-static');
+// In production, we might need to check both locations
+const clientStaticDir = path.resolve(__dirname, './client-static');
+const clientBuildDir = path.resolve(__dirname, '../client-build');
+
+// Check which directory exists and use it
+let clientDir: string;
+try {
+  const fs = require('fs');
+  if (fs.existsSync(clientStaticDir)) {
+    clientDir = clientStaticDir;
+    logger.info(`Using client directory: ${clientDir}`);
+  } else if (fs.existsSync(clientBuildDir)) {
+    clientDir = clientBuildDir;
+    logger.info(`Using client directory: ${clientDir} (fallback to client-build)`);
+  } else {
+    throw new Error(`Neither ${clientStaticDir} nor ${clientBuildDir} exists`);
+  }
+} catch (error) {
+  logger.error(`Error determining client directory: ${error}`);
+  clientDir = clientStaticDir; // fallback
+}
+
+// Debug middleware to log all requests (BEFORE static middleware)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/assets') || req.path.includes('.js') || req.path.includes('.css')) {
+    logger.info(`Asset request: ${req.method} ${req.path}`);
+  }
+  next();
+});
 
 // Explicitly serve assets directory with proper MIME types
 app.use('/assets', express.static(path.join(clientDir, 'assets'), {
@@ -410,11 +438,7 @@ app.use(express.static(clientDir, {
   }
 }));
 
-// Debug middleware to log all requests
-app.use((req, res, next) => {
-  logger.info(`Request: ${req.method} ${req.path} - User-Agent: ${req.get('User-Agent')?.substring(0, 50)}...`);
-  next();
-});
+// Debug middleware moved above - this is duplicate, removing
 
 // SPA fallback: everything NOT starting with /api, /health, or /assets goes to index.html
 app.get('*', (req, res, next) => {
