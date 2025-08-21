@@ -176,7 +176,7 @@ router.post('/verify', requireAuth, async (req: Request, res: Response) => {
         logger.info(`💰 📊 AFTER CREDIT: User ${order.userId} balance: ₹${postCreditBalance} (increase: ₹${postCreditBalance - preCreditBalance})`);
         
         // Verify the credit was actually added
-        const expectedBalance = parseFloat(preCreditBalance) + parseFloat(order.amountCredits);
+        const expectedBalance = parseFloat(preCreditBalance) + order.amountCredits;
         const actualBalance = parseFloat(postCreditBalance);
         
         if (Math.abs(actualBalance - expectedBalance) < 0.01) {

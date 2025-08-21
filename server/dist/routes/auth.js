@@ -184,12 +184,25 @@ router.get('/me', auth_1.requireAuth, async (req, res) => {
     try {
         const session = req.session;
         const userId = session.userId;
+        const timestamp = req.query.t || Date.now();
+        console.log(`💰 🔍 AUTH /ME: Fetching user data for userId=${userId}, timestamp=${timestamp}`);
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
         const result = await db_1.default.query('SELECT id, name, email, username, role, credit_balance, created_at FROM users WHERE id = $1', [userId]);
+        console.log(`💰 📊 AUTH /ME: Database query result:`, {
+            rowCount: result.rows.length,
+            userId: userId,
+            creditBalance: result.rows[0]?.credit_balance
+        });
         if (result.rows.length === 0) {
+            console.log(`💰 ❌ AUTH /ME: User ${userId} not found in database`);
             return res.status(404).json({ error: 'User not found' });
         }
         const user = result.rows[0];
-        res.json({
+        const responseData = {
             user: {
                 id: user.id,
                 name: user.name,
@@ -199,10 +212,17 @@ router.get('/me', auth_1.requireAuth, async (req, res) => {
                 creditBalance: user.credit_balance,
                 createdAt: user.created_at
             }
+        };
+        console.log(`💰 ✅ AUTH /ME: Returning fresh user data:`, {
+            userId: user.id,
+            username: user.username,
+            creditBalance: user.credit_balance,
+            timestamp: timestamp
         });
+        res.json(responseData);
     }
     catch (error) {
-        console.error('Get user error:', error);
+        console.error('💰 ❌ AUTH /ME: Get user error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

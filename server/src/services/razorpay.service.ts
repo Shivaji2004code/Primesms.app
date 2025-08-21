@@ -6,11 +6,20 @@
 import Razorpay from 'razorpay';
 import { logger } from '../utils/logger';
 
-// Initialize Razorpay instance
-export const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+// Initialize Razorpay instance only if credentials are available
+let razorpay: Razorpay | null = null;
+
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+  logger.info('Razorpay service initialized successfully');
+} else {
+  logger.warn('Razorpay credentials not found - payment functionality will be disabled');
+}
+
+export { razorpay };
 
 export type CreateOrderParams = {
   amountCredits: number;
@@ -39,6 +48,11 @@ export async function createRazorpayOrder({
   receipt 
 }: CreateOrderParams): Promise<RazorpayOrder> {
   try {
+    // Check if Razorpay is initialized
+    if (!razorpay) {
+      throw new Error('Razorpay is not configured. Please check environment variables.');
+    }
+
     // Get price per credit from environment (default: ₹1 per credit)
     const pricePerCredit = Number(process.env.PRICE_PER_CREDIT_INR ?? 1);
     

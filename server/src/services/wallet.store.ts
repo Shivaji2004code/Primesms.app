@@ -73,6 +73,14 @@ class InMemoryWalletStore implements WalletStore {
       logger.info(`💰 🔄 WALLET CREDIT START: userId=${userId}, amount=${amountCredits}, ref=${ref}, description="${description}"`);
       logger.info(`💰 📋 CREDIT METHOD: Attempting credit system first, then fallback to direct DB`);
       
+      // Log current balance before any credit operations
+      const preCheckResult = await pool.query(
+        'SELECT credit_balance FROM users WHERE id = $1',
+        [userId]
+      );
+      const currentBal = preCheckResult.rows[0]?.credit_balance || 0;
+      logger.info(`💰 📊 WALLET STORE PRE-CHECK: User ${userId} current balance: ₹${currentBal}`);
+      
       // Try using the existing credit system first
       try {
         logger.info(`💰 🔧 STEP 1: Attempting credit via addCredits() function...`);

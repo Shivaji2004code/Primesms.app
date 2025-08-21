@@ -229,16 +229,22 @@ export const WalletTopUp: React.FC<WalletTopUpProps> = ({
               
               setShowSuccess(true);
               
-              // Call success callback to refresh parent balance
+              // Call success callback to refresh parent balance immediately
               console.log('💰 🔄 FRONTEND: Calling onPaymentSuccess callback...');
               onPaymentSuccess?.();
               
+              // Also trigger an immediate balance refresh
+              console.log('💰 🔄 FRONTEND: Triggering immediate balance refresh...');
+              setTimeout(() => {
+                onPaymentSuccess?.();
+              }, 500);
+              
               // Force reload to get fresh data from server
-              console.log('💰 🔄 FRONTEND: Scheduling page reload in 2 seconds...');
+              console.log('💰 🔄 FRONTEND: Scheduling page reload in 3 seconds...');
               setTimeout(() => {
                 console.log('💰 🔄 FRONTEND: Reloading page to refresh balance...');
                 window.location.reload();
-              }, 2000);
+              }, 3000);
             } else {
               console.error('💰 ❌ FRONTEND: Payment verification failed:', verifyData);
               throw new Error(verifyData.error || 'Payment verification failed');
