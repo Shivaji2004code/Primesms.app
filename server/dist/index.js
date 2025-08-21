@@ -39,72 +39,55 @@ exports.app = app;
 app.set('trust proxy', 1);
 app.use(health_1.default);
 console.log('[HEALTH] Health endpoints mounted FIRST - always accessible');
-const clientStaticDir = path_1.default.resolve(__dirname, './client-static');
 const clientBuildDir = path_1.default.resolve(__dirname, '../client-build');
-const cwdClientStaticDir = path_1.default.resolve(process.cwd(), 'dist/client-static');
 const cwdClientBuildDir = path_1.default.resolve(process.cwd(), 'client-build');
-const preBuiltClientDir = path_1.default.resolve(__dirname, '../pre-built-client');
+const distClientStaticDir = path_1.default.resolve(process.cwd(), 'dist/client-static');
 const staticFallbackDir = path_1.default.resolve(__dirname, '../static-fallback');
 let clientDir = staticFallbackDir;
 try {
     const fs = require('fs');
-    logger_1.logger.info(`Checking client directories:`);
-    logger_1.logger.info(`  clientStaticDir: ${clientStaticDir} - exists: ${fs.existsSync(clientStaticDir)}`);
-    logger_1.logger.info(`  clientBuildDir: ${clientBuildDir} - exists: ${fs.existsSync(clientBuildDir)}`);
-    logger_1.logger.info(`  cwdClientStaticDir: ${cwdClientStaticDir} - exists: ${fs.existsSync(cwdClientStaticDir)}`);
-    logger_1.logger.info(`  cwdClientBuildDir: ${cwdClientBuildDir} - exists: ${fs.existsSync(cwdClientBuildDir)}`);
-    logger_1.logger.info(`  preBuiltClientDir: ${preBuiltClientDir} - exists: ${fs.existsSync(preBuiltClientDir)}`);
-    logger_1.logger.info(`  staticFallbackDir: ${staticFallbackDir} - exists: ${fs.existsSync(staticFallbackDir)}`);
-    const hasAssets = (dir) => {
+    logger_1.logger.info(`🔍 Resolving client directory:`);
+    const hasValidAssets = (dir) => {
         const assetsDir = path_1.default.join(dir, 'assets');
         if (!fs.existsSync(assetsDir))
             return false;
         const files = fs.readdirSync(assetsDir);
-        return files.some((file) => file.endsWith('.js') || file.endsWith('.css'));
+        const hasJS = files.some((file) => file.endsWith('.js'));
+        const hasCSS = files.some((file) => file.endsWith('.css'));
+        return hasJS && hasCSS;
     };
     const candidates = [
-        { name: 'clientStaticDir', path: clientStaticDir },
-        { name: 'clientBuildDir', path: clientBuildDir },
-        { name: 'cwdClientStaticDir', path: cwdClientStaticDir },
-        { name: 'cwdClientBuildDir', path: cwdClientBuildDir },
-        { name: 'preBuiltClientDir', path: preBuiltClientDir }
+        { name: 'local client-build', path: clientBuildDir },
+        { name: 'cwd client-build', path: cwdClientBuildDir },
+        { name: 'dist client-static', path: distClientStaticDir }
     ];
-    let foundWithAssets = false;
+    let found = false;
     for (const candidate of candidates) {
-        if (fs.existsSync(candidate.path) && hasAssets(candidate.path)) {
-            clientDir = candidate.path;
-            logger_1.logger.info(`✅ Using client directory with assets: ${clientDir} (${candidate.name})`);
-            const assetsDir = path_1.default.join(clientDir, 'assets');
-            const assetFiles = fs.readdirSync(assetsDir);
-            logger_1.logger.info(`Assets found: ${assetFiles.join(', ')}`);
-            foundWithAssets = true;
-            break;
-        }
-    }
-    if (!foundWithAssets) {
-        for (const candidate of candidates) {
-            if (fs.existsSync(candidate.path)) {
+        if (fs.existsSync(candidate.path)) {
+            const assetsDir = path_1.default.join(candidate.path, 'assets');
+            const hasAssets = fs.existsSync(assetsDir);
+            logger_1.logger.info(`  ${candidate.name}: ${candidate.path} - exists: ✓${hasAssets ? ' (with assets)' : ' (no assets)'}`);
+            if (hasAssets) {
                 clientDir = candidate.path;
-                logger_1.logger.warn(`⚠️  Using client directory without assets: ${clientDir} (${candidate.name})`);
-                const assetsDir = path_1.default.join(clientDir, 'assets');
-                logger_1.logger.info(`Assets directory: ${assetsDir} - exists: ${fs.existsSync(assetsDir)}`);
-                if (fs.existsSync(assetsDir)) {
-                    const assetFiles = fs.readdirSync(assetsDir);
-                    logger_1.logger.info(`Assets found: ${assetFiles.join(', ')}`);
-                }
+                const assetFiles = fs.readdirSync(assetsDir);
+                logger_1.logger.info(`✅ Using: ${clientDir}`);
+                logger_1.logger.info(`📦 Assets: ${assetFiles.join(', ')}`);
+                found = true;
                 break;
             }
         }
-        if (!clientDir || !fs.existsSync(clientDir)) {
-            clientDir = staticFallbackDir;
-            logger_1.logger.warn(`⚠️  No client build found. Using fallback static directory: ${clientDir}`);
-            logger_1.logger.warn(`   This will serve a basic landing page. Deploy from project root to include React frontend.`);
+        else {
+            logger_1.logger.info(`  ${candidate.name}: ${candidate.path} - missing: ✗`);
         }
+    }
+    if (!found) {
+        clientDir = staticFallbackDir;
+        logger_1.logger.warn(`⚠️  No client build with assets found. Using fallback: ${clientDir}`);
     }
 }
 catch (error) {
-    logger_1.logger.error(`❌ Error determining client directory: ${error}`);
-    clientDir = clientStaticDir;
+    logger_1.logger.error(`❌ Error resolving client directory: ${error}`);
+    clientDir = staticFallbackDir;
 }
 app.use((req, res, next) => {
     if (req.path.startsWith('/assets')) {
