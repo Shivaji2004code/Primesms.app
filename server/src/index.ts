@@ -80,17 +80,23 @@ console.log('[HEALTH] Health endpoints mounted FIRST - always accessible');
 // STATIC FILE SERVING (SECOND PRIORITY - BEFORE ALL MIDDLEWARE)
 // ============================================================================
 
-// Simplified client directory resolution - single source of truth
-const clientBuildDir = path.resolve(__dirname, '../client-build');
-const cwdClientBuildDir = path.resolve(process.cwd(), 'client-build');
-const distClientStaticDir = path.resolve(process.cwd(), 'dist/client-static');
+// Production-aware client directory resolution
+const isProduction = process.env.NODE_ENV === 'production';
+
+// When running from dist/ (production), paths need to be relative to the actual working directory
+const localClientBuildDir = path.resolve(__dirname, '../client-build');  // dev: server/dist/../client-build -> server/client-build
+const prodClientStaticDir = path.resolve(__dirname, './client-static');  // prod: /app/dist/client-static
+const cwdClientBuildDir = path.resolve(process.cwd(), 'client-build');    // /app/client-build
+const cwdDistClientStatic = path.resolve(process.cwd(), 'dist/client-static'); // /app/dist/client-static
 const staticFallbackDir = path.resolve(__dirname, '../static-fallback');
 
 let clientDir: string = staticFallbackDir;
 try {
   const fs = require('fs');
   
-  logger.info(`🔍 Resolving client directory:`);
+  logger.info(`🔍 Resolving client directory (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}):`);
+  logger.info(`   Working dir: ${process.cwd()}`);
+  logger.info(`   __dirname: ${__dirname}`);
   
   // Function to check if a directory has valid assets
   const hasValidAssets = (dir: string) => {
@@ -102,11 +108,16 @@ try {
     return hasJS && hasCSS;
   };
   
-  // Priority order: local build -> cwd build -> dist static -> fallback
-  const candidates = [
-    { name: 'local client-build', path: clientBuildDir },
-    { name: 'cwd client-build', path: cwdClientBuildDir },
-    { name: 'dist client-static', path: distClientStaticDir }
+  // Different priorities for development vs production
+  const candidates = isProduction ? [
+    { name: 'prod client-static (from dist)', path: prodClientStaticDir },     // /app/dist/client-static
+    { name: 'cwd dist/client-static', path: cwdDistClientStatic },             // /app/dist/client-static
+    { name: 'cwd client-build', path: cwdClientBuildDir },                     // /app/client-build
+    { name: 'local client-build', path: localClientBuildDir }                  // fallback
+  ] : [
+    { name: 'local client-build', path: localClientBuildDir },                 // server/client-build
+    { name: 'cwd client-build', path: cwdClientBuildDir },                     // ./client-build
+    { name: 'cwd dist/client-static', path: cwdDistClientStatic }              // ./dist/client-static
   ];
   
   let found = false;

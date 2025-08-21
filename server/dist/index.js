@@ -39,14 +39,18 @@ exports.app = app;
 app.set('trust proxy', 1);
 app.use(health_1.default);
 console.log('[HEALTH] Health endpoints mounted FIRST - always accessible');
-const clientBuildDir = path_1.default.resolve(__dirname, '../client-build');
+const isProduction = process.env.NODE_ENV === 'production';
+const localClientBuildDir = path_1.default.resolve(__dirname, '../client-build');
+const prodClientStaticDir = path_1.default.resolve(__dirname, './client-static');
 const cwdClientBuildDir = path_1.default.resolve(process.cwd(), 'client-build');
-const distClientStaticDir = path_1.default.resolve(process.cwd(), 'dist/client-static');
+const cwdDistClientStatic = path_1.default.resolve(process.cwd(), 'dist/client-static');
 const staticFallbackDir = path_1.default.resolve(__dirname, '../static-fallback');
 let clientDir = staticFallbackDir;
 try {
     const fs = require('fs');
-    logger_1.logger.info(`🔍 Resolving client directory:`);
+    logger_1.logger.info(`🔍 Resolving client directory (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}):`);
+    logger_1.logger.info(`   Working dir: ${process.cwd()}`);
+    logger_1.logger.info(`   __dirname: ${__dirname}`);
     const hasValidAssets = (dir) => {
         const assetsDir = path_1.default.join(dir, 'assets');
         if (!fs.existsSync(assetsDir))
@@ -56,10 +60,15 @@ try {
         const hasCSS = files.some((file) => file.endsWith('.css'));
         return hasJS && hasCSS;
     };
-    const candidates = [
-        { name: 'local client-build', path: clientBuildDir },
+    const candidates = isProduction ? [
+        { name: 'prod client-static (from dist)', path: prodClientStaticDir },
+        { name: 'cwd dist/client-static', path: cwdDistClientStatic },
         { name: 'cwd client-build', path: cwdClientBuildDir },
-        { name: 'dist client-static', path: distClientStaticDir }
+        { name: 'local client-build', path: localClientBuildDir }
+    ] : [
+        { name: 'local client-build', path: localClientBuildDir },
+        { name: 'cwd client-build', path: cwdClientBuildDir },
+        { name: 'cwd dist/client-static', path: cwdDistClientStatic }
     ];
     let found = false;
     for (const candidate of candidates) {
