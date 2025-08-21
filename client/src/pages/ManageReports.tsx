@@ -376,60 +376,6 @@ export default function ManageReports() {
           Back to Dashboard
         </Button>
 
-        {/* Summary Cards */}
-        {summary && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-600 text-sm font-medium">Total Campaigns</p>
-                    <p className="text-2xl font-bold text-blue-900">{summary.total_campaigns}</p>
-                  </div>
-                  <FileText className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-green-600 text-sm font-medium">Total Messages</p>
-                    <p className="text-2xl font-bold text-green-900">{summary.total_messages}</p>
-                  </div>
-                  <MessageSquare className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-emerald-600 text-sm font-medium">Successful</p>
-                    <p className="text-2xl font-bold text-emerald-900">{summary.successful_messages}</p>
-                  </div>
-                  <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-purple-600 text-sm font-medium">Success Rate</p>
-                    <p className="text-2xl font-bold text-purple-900">{summary.success_rate.toFixed(1)}%</p>
-                  </div>
-                  <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* Filters and Search */}
         <Card>
@@ -624,13 +570,13 @@ export default function ManageReports() {
                     <th className="text-left px-3 py-3 font-bold text-[10px] uppercase tracking-wide min-w-[130px] border-r border-slate-700">
                       <div className="flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3 text-green-400" />
-                        Delivered
+                        Delivered At
                       </div>
                     </th>
                     <th className="text-left px-3 py-3 font-bold text-[10px] uppercase tracking-wide min-w-[120px] border-r border-slate-700">
                       <div className="flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3 text-purple-400" />
-                        Read
+                        Read At
                       </div>
                     </th>
                     <th className="text-left px-3 py-3 font-bold text-[10px] uppercase tracking-wide min-w-[200px]">
@@ -716,7 +662,7 @@ export default function ManageReports() {
                                 <div className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                                   <Clock className="h-2 w-2 text-gray-400" />
                                 </div>
-                                <span className="text-[10px] text-gray-400 font-medium">Not delivered</span>
+                                <span className="text-[10px] text-green-600 font-medium">Not delivered</span>
                               </div>
                             )}
                           </div>
@@ -749,7 +695,7 @@ export default function ManageReports() {
                                 <div className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                                   <Clock className="h-2 w-2 text-gray-400" />
                                 </div>
-                                <span className="text-[10px] text-gray-400 font-medium">Not read</span>
+                                <span className="text-[10px] text-green-600 font-medium">Not read</span>
                               </div>
                             )}
                           </div>
