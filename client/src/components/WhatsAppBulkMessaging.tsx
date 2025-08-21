@@ -1180,20 +1180,16 @@ export default function WhatsAppBulkMessaging() {
                       className="hidden"
                       id="file-upload-input"
                     />
-                    <label htmlFor="file-upload-input">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-xs font-medium border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
-                        asChild
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <Upload className="h-3.5 w-3.5" />
-                          Import
-                        </span>
-                      </Button>
-                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs font-medium border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 cursor-pointer"
+                      onClick={() => document.getElementById('file-upload-input')?.click()}
+                    >
+                      <Upload className="h-3.5 w-3.5 mr-1.5" />
+                      Import
+                    </Button>
                     {recipients.length > 0 && (
                       <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                         {recipients.length} numbers
