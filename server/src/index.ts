@@ -80,9 +80,12 @@ console.log('[HEALTH] Health endpoints mounted FIRST - always accessible');
 // STATIC FILE SERVING (SECOND PRIORITY - BEFORE ALL MIDDLEWARE)
 // ============================================================================
 
-// In production, we might need to check both locations
+// In production, we might need to check multiple locations
 const clientStaticDir = path.resolve(__dirname, './client-static');
 const clientBuildDir = path.resolve(__dirname, '../client-build');
+// Additional fallbacks for Coolify/PM2 run directories
+const cwdClientStaticDir = path.resolve(process.cwd(), 'dist/client-static');
+const cwdClientBuildDir = path.resolve(process.cwd(), 'client-build');
 
 // Check which directory exists and use it
 let clientDir: string;
@@ -92,6 +95,8 @@ try {
   logger.info(`Checking client directories:`);
   logger.info(`  clientStaticDir: ${clientStaticDir} - exists: ${fs.existsSync(clientStaticDir)}`);
   logger.info(`  clientBuildDir: ${clientBuildDir} - exists: ${fs.existsSync(clientBuildDir)}`);
+  logger.info(`  cwdClientStaticDir: ${cwdClientStaticDir} - exists: ${fs.existsSync(cwdClientStaticDir)}`);
+  logger.info(`  cwdClientBuildDir: ${cwdClientBuildDir} - exists: ${fs.existsSync(cwdClientBuildDir)}`);
   
   if (fs.existsSync(clientStaticDir)) {
     clientDir = clientStaticDir;
@@ -115,8 +120,26 @@ try {
       const assetFiles = fs.readdirSync(assetsDir);
       logger.info(`Assets found: ${assetFiles.join(', ')}`);
     }
+  } else if (fs.existsSync(cwdClientStaticDir)) {
+    clientDir = cwdClientStaticDir;
+    logger.info(`✅ Using client directory: ${clientDir} (cwd dist/client-static)`);
+    const assetsDir = path.join(clientDir, 'assets');
+    logger.info(`Assets directory: ${assetsDir} - exists: ${fs.existsSync(assetsDir)}`);
+    if (fs.existsSync(assetsDir)) {
+      const assetFiles = fs.readdirSync(assetsDir);
+      logger.info(`Assets found: ${assetFiles.join(', ')}`);
+    }
+  } else if (fs.existsSync(cwdClientBuildDir)) {
+    clientDir = cwdClientBuildDir;
+    logger.info(`✅ Using client directory: ${clientDir} (cwd client-build)`);
+    const assetsDir = path.join(clientDir, 'assets');
+    logger.info(`Assets directory: ${assetsDir} - exists: ${fs.existsSync(assetsDir)}`);
+    if (fs.existsSync(assetsDir)) {
+      const assetFiles = fs.readdirSync(assetsDir);
+      logger.info(`Assets found: ${assetFiles.join(', ')}`);
+    }
   } else {
-    throw new Error(`Neither ${clientStaticDir} nor ${clientBuildDir} exists`);
+    throw new Error(`No client directory found. Checked: ${clientStaticDir}, ${clientBuildDir}, ${cwdClientStaticDir}, ${cwdClientBuildDir}`);
   }
 } catch (error) {
   logger.error(`❌ Error determining client directory: ${error}`);

@@ -40,8 +40,10 @@ COPY --from=server-builder /app/server/dist ./dist
 COPY --from=server-builder /app/server/ecosystem.config.js ./
 
 # Copy built client into server's static directory (both locations for compatibility)
-COPY --from=client-builder /app/client/dist ./dist/client-static
-COPY --from=client-builder /app/client/dist ./client-build
+# Note: Vite outDir is set to '../server/client-build', so the build output
+# lives at /app/server/client-build inside the client-builder stage.
+COPY --from=client-builder /app/server/client-build ./dist/client-static
+COPY --from=client-builder /app/server/client-build ./client-build
 
 # Copy database migration files for initialization
 COPY migration_add_app_secret.sql ./

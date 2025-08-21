@@ -41,12 +41,16 @@ app.use(health_1.default);
 console.log('[HEALTH] Health endpoints mounted FIRST - always accessible');
 const clientStaticDir = path_1.default.resolve(__dirname, './client-static');
 const clientBuildDir = path_1.default.resolve(__dirname, '../client-build');
+const cwdClientStaticDir = path_1.default.resolve(process.cwd(), 'dist/client-static');
+const cwdClientBuildDir = path_1.default.resolve(process.cwd(), 'client-build');
 let clientDir;
 try {
     const fs = require('fs');
     logger_1.logger.info(`Checking client directories:`);
     logger_1.logger.info(`  clientStaticDir: ${clientStaticDir} - exists: ${fs.existsSync(clientStaticDir)}`);
     logger_1.logger.info(`  clientBuildDir: ${clientBuildDir} - exists: ${fs.existsSync(clientBuildDir)}`);
+    logger_1.logger.info(`  cwdClientStaticDir: ${cwdClientStaticDir} - exists: ${fs.existsSync(cwdClientStaticDir)}`);
+    logger_1.logger.info(`  cwdClientBuildDir: ${cwdClientBuildDir} - exists: ${fs.existsSync(cwdClientBuildDir)}`);
     if (fs.existsSync(clientStaticDir)) {
         clientDir = clientStaticDir;
         logger_1.logger.info(`✅ Using client directory: ${clientDir}`);
@@ -67,8 +71,28 @@ try {
             logger_1.logger.info(`Assets found: ${assetFiles.join(', ')}`);
         }
     }
+    else if (fs.existsSync(cwdClientStaticDir)) {
+        clientDir = cwdClientStaticDir;
+        logger_1.logger.info(`✅ Using client directory: ${clientDir} (cwd dist/client-static)`);
+        const assetsDir = path_1.default.join(clientDir, 'assets');
+        logger_1.logger.info(`Assets directory: ${assetsDir} - exists: ${fs.existsSync(assetsDir)}`);
+        if (fs.existsSync(assetsDir)) {
+            const assetFiles = fs.readdirSync(assetsDir);
+            logger_1.logger.info(`Assets found: ${assetFiles.join(', ')}`);
+        }
+    }
+    else if (fs.existsSync(cwdClientBuildDir)) {
+        clientDir = cwdClientBuildDir;
+        logger_1.logger.info(`✅ Using client directory: ${clientDir} (cwd client-build)`);
+        const assetsDir = path_1.default.join(clientDir, 'assets');
+        logger_1.logger.info(`Assets directory: ${assetsDir} - exists: ${fs.existsSync(assetsDir)}`);
+        if (fs.existsSync(assetsDir)) {
+            const assetFiles = fs.readdirSync(assetsDir);
+            logger_1.logger.info(`Assets found: ${assetFiles.join(', ')}`);
+        }
+    }
     else {
-        throw new Error(`Neither ${clientStaticDir} nor ${clientBuildDir} exists`);
+        throw new Error(`No client directory found. Checked: ${clientStaticDir}, ${clientBuildDir}, ${cwdClientStaticDir}, ${cwdClientBuildDir}`);
     }
 }
 catch (error) {
