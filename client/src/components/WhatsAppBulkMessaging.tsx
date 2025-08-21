@@ -28,7 +28,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+// Removed Tabs imports since we no longer use tabs
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Progress } from './ui/progress';
 import { useStore } from '../store/useStore';
@@ -107,7 +107,7 @@ export default function WhatsAppBulkMessaging() {
   const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({});
   const [templatePreview, setTemplatePreview] = useState<string>('');
   const [campaignPreview, setCampaignPreview] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<string>('manual');
+  // Removed activeTab state since we no longer use tabs
   
   // Pricing modal state
   const [showPricingModal, setShowPricingModal] = useState<boolean>(false);
@@ -177,6 +177,21 @@ export default function WhatsAppBulkMessaging() {
     message: '',
     successCount: 0,
     failedCount: 0
+  });
+
+  // File parsing success modal state
+  const [fileParsingModal, setFileParsingModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    parsedCount: number;
+    invalidCount: number;
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    parsedCount: 0,
+    invalidCount: 0
   });
 
   const navigate = useNavigate();
@@ -445,14 +460,15 @@ export default function WhatsAppBulkMessaging() {
           // Auto-parse recipients immediately after setting the text
           parseRecipientsFromText(numbersText);
           
-          // Switch to manual tab to show the imported numbers
-          setActiveTab('manual');
+          // Numbers will automatically appear in the manual input field
           
-          setAlertState({
+          // Show parsing success modal instead of alert
+          setFileParsingModal({
             show: true,
-            type: 'success',
-            title: 'Numbers imported to manual entry',
-            message: `Imported ${data.valid_count} numbers from first column to manual entry field${data.invalid_count > 0 ? `. ${data.invalid_count} invalid numbers skipped` : ''}. Ready to send!`
+            title: 'File Parsed Successfully!',
+            message: `Numbers imported from first column and ready to send`,
+            parsedCount: data.valid_count,
+            invalidCount: data.invalid_count || 0
           });
         } else {
           setAlertState({
@@ -505,14 +521,15 @@ export default function WhatsAppBulkMessaging() {
       // Auto-parse recipients immediately after setting the text
       parseRecipientsFromText(numbersText);
       
-      // Switch to manual tab to show the imported numbers
-      setActiveTab('manual');
+      // Numbers will automatically appear in the manual input field
       
-      setAlertState({
+      // Show parsing success modal instead of alert
+      setFileParsingModal({
         show: true,
-        type: 'success',
-        title: 'File imported successfully',
-        message: `Imported ${lines.length} entries to manual entry field. Review and edit as needed.`
+        title: 'File Parsed Successfully!',
+        message: `Numbers imported and ready to send`,
+        parsedCount: lines.length,
+        invalidCount: 0
       });
     };
     
@@ -1141,83 +1158,65 @@ export default function WhatsAppBulkMessaging() {
                 />
               </div>
 
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-                  <TabsTrigger value="file">File Upload</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="manual" className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <Label htmlFor="manual-recipients" className="text-sm font-medium">Phone Numbers *</Label>
-                      {recipients.length > 0 && (
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-700">
-                          {recipients.length} numbers detected
-                        </Badge>
-                      )}
-                    </div>
-                    <Textarea
-                      id="manual-recipients"
-                      value={manualRecipients}
-                      onChange={(e) => handleManualRecipientsChange(e.target.value)}
-                      placeholder="Type or paste phone numbers here:&#10;919876543210&#10;918765432109&#10;917654321098&#10;...&#10;&#10;Numbers are processed automatically as you type!"
-                      className="mt-1"
-                      rows={6}
-                    />
-                    <p className="text-xs text-emerald-600 mt-1 font-medium">
-                      ⚡ Auto-processing: Numbers are detected and ready as you type or paste!
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Format: Include country code (91 for India, 1 for US). Separate with commas or new lines.
-                    </p>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="file" className="space-y-4">
-                  {/* File Upload */}
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-emerald-400 transition-colors">
+              {/* File Upload and Manual Entry Section */}
+              <div className="space-y-4">
+                {/* File Upload Button */}
+                <div className="flex items-center justify-between mb-4">
+                  <Label className="text-sm font-medium">Import Phone Numbers</Label>
+                  <div className="flex items-center gap-3">
                     <input
                       type="file"
                       accept=".txt,.csv,.xlsx,.xls"
                       onChange={handleFileUpload}
                       className="hidden"
-                      id="file-upload"
+                      id="file-upload-button"
                     />
-                    <label htmlFor="file-upload" className="cursor-pointer">
-                      <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <div className="text-lg font-medium text-gray-900 mb-2">Upload Phone Numbers</div>
-                      <div className="text-sm text-gray-500 mb-4">
-                        Upload .txt, .csv, .xlsx, or .xls file with phone numbers
-                      </div>
-                      <div className="text-xs text-gray-400 mb-4">
-                        • Excel/CSV files: Auto-import phone numbers from first column to manual entry<br/>
-                        • Phone numbers will be auto-populated line by line<br/>
-                        • Include country code (e.g., 919394567890, 1234567890)
-                      </div>
+                    <label htmlFor="file-upload-button" className="cursor-pointer">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                        asChild
+                      >
+                        <span>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload File
+                        </span>
+                      </Button>
                     </label>
+                    <span className="text-xs text-gray-500">.txt, .csv, .xlsx, .xls</span>
                   </div>
+                </div>
 
-                  
-                  {/* File Upload Instructions */}
-                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                    <div className="flex items-start space-x-3">
-                       <Info className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
-                       <div className="text-sm text-emerald-800">
-                        <div className="font-medium mb-2">📱 Quick-Send File Import:</div>
-                        <ul className="space-y-1 text-xs">
-                          <li>• Excel/CSV: Phone numbers auto-imported from first column</li>
-                          <li>• Numbers populate directly into manual entry field</li>
-                          <li>• Example: 919398424270, 918765432109, 917654321098</li>
-                          <li>• All recipients use the same static template variables</li>
-                          <li>• For dynamic variables per recipient, use the Customize feature</li>
-                          <li>• Maximum file size: 10MB</li>
-                        </ul>
-                      </div>
-                    </div>
+                {/* Manual Entry Field */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="manual-recipients" className="text-sm font-medium">Phone Numbers *</Label>
+                    {recipients.length > 0 && (
+                      <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                        {recipients.length} numbers detected
+                      </Badge>
+                    )}
                   </div>
-                </TabsContent>
-              </Tabs>
+                  <Textarea
+                    id="manual-recipients"
+                    value={manualRecipients}
+                    onChange={(e) => handleManualRecipientsChange(e.target.value)}
+                    placeholder="Type or paste phone numbers here:&#10;919876543210&#10;918765432109&#10;917654321098&#10;...&#10;&#10;Numbers are processed automatically as you type or upload files!"
+                    className="mt-1"
+                    rows={6}
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-emerald-600 font-medium">
+                      ⚡ Auto-processing: Numbers are detected as you type or upload files!
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Include country code (91, 1, etc.) • One per line or comma separated
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               {/* Recipients Summary - No individual list */}
               {recipients.length > 0 && (
@@ -1625,6 +1624,73 @@ export default function WhatsAppBulkMessaging() {
                 <p className="text-xs text-gray-500">
                   By confirming, you agree to send {recipients.length} messages at ₹{PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof PRICING] || PRICING.UTILITY} each
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Parsing Success Modal */}
+      {fileParsingModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-modal-slide-in">
+            <div className="p-6">
+              {/* Animated Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-emerald-200 rounded-full animate-ping opacity-75"></div>
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 relative z-10 animate-tick-success" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 animate-fade-in-up">{fileParsingModal.title}</h3>
+                    <p className="text-sm text-gray-600 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>{fileParsingModal.message}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFileParsingModal(prev => ({ ...prev, show: false }))}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 h-8 w-8 p-0 rounded-lg"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Parsing Results */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <div className="text-2xl font-bold text-emerald-600">{fileParsingModal.parsedCount}</div>
+                  <div className="text-sm text-emerald-800">Numbers Parsed</div>
+                </div>
+                {fileParsingModal.invalidCount > 0 && (
+                  <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                    <div className="text-2xl font-bold text-orange-600">{fileParsingModal.invalidCount}</div>
+                    <div className="text-sm text-orange-800">Invalid Skipped</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Info Message */}
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-6">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                  <div className="text-sm text-blue-800">
+                    <div className="font-medium">Ready to Send!</div>
+                    <div>Phone numbers have been populated in the input field below.</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <div className="flex justify-end">
+                <Button 
+                  onClick={() => setFileParsingModal(prev => ({ ...prev, show: false }))}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Continue
+                </Button>
               </div>
             </div>
           </div>

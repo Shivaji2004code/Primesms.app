@@ -600,43 +600,43 @@ export default function ManageReports() {
             {/* Reports Table */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-full border-collapse bg-white table-fixed">
+                <table className="w-full min-w-[1200px] border-collapse bg-white">
                 <thead>
                   <tr className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
-                    <th className="text-left px-4 py-5 font-bold text-xs uppercase tracking-widest w-[18%] border-r border-slate-700">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
+                    <th className="text-left px-3 py-3 font-bold text-[10px] uppercase tracking-wide min-w-[180px] border-r border-slate-700">
+                      <div className="flex items-center gap-1">
+                        <FileText className="h-3 w-3" />
                         Template
                       </div>
                     </th>
-                    <th className="text-left px-4 py-5 font-bold text-xs uppercase tracking-widest w-[15%] border-r border-slate-700">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
+                    <th className="text-left px-3 py-3 font-bold text-[10px] uppercase tracking-wide min-w-[140px] border-r border-slate-700">
+                      <div className="flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
                         Recipient
                       </div>
                     </th>
-                    <th className="text-left px-4 py-5 font-bold text-xs uppercase tracking-widest w-[12%] border-r border-slate-700">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4" />
+                    <th className="text-left px-3 py-3 font-bold text-[10px] uppercase tracking-wide min-w-[100px] border-r border-slate-700">
+                      <div className="flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
                         Status
                       </div>
                     </th>
-                    <th className="text-left px-4 py-5 font-bold text-xs uppercase tracking-widest w-[16%] border-r border-slate-700">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-400" />
-                        Delivered At
+                    <th className="text-left px-3 py-3 font-bold text-[10px] uppercase tracking-wide min-w-[130px] border-r border-slate-700">
+                      <div className="flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-green-400" />
+                        Delivered
                       </div>
                     </th>
-                    <th className="text-left px-4 py-5 font-bold text-xs uppercase tracking-widest w-[14%] border-r border-slate-700">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                        Read At
+                    <th className="text-left px-3 py-3 font-bold text-[10px] uppercase tracking-wide min-w-[120px] border-r border-slate-700">
+                      <div className="flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-purple-400" />
+                        Read
                       </div>
                     </th>
-                    <th className="text-left px-4 py-5 font-bold text-xs uppercase tracking-widest w-[25%]">
-                      <div className="flex items-center gap-2">
-                        <XCircle className="h-4 w-4 text-red-400" />
-                        Error Message
+                    <th className="text-left px-3 py-3 font-bold text-[10px] uppercase tracking-wide min-w-[200px]">
+                      <div className="flex items-center gap-1">
+                        <XCircle className="h-3 w-3 text-red-400" />
+                        Error
                       </div>
                     </th>
                   </tr>
@@ -663,45 +663,47 @@ export default function ManageReports() {
                   ) : (
                     reports.map((report, index) => (
                       <tr key={report.id} className={`hover:bg-slate-50 transition-all duration-300 border-b border-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                        <td className="px-4 py-5 w-[18%] border-r border-gray-100">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <FileText className="h-4 w-4 text-white" />
+                        <td className="px-3 py-3 min-w-[180px] border-r border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center flex-shrink-0">
+                              <FileText className="h-3 w-3 text-white" />
                             </div>
-                            <span className="text-sm text-gray-800 font-semibold truncate" title={report.template_used}>
+                            <span className="text-xs text-gray-800 font-semibold" title={report.template_used}>
                               {report.template_used}
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-5 w-[15%] border-r border-gray-100">
+                        <td className="px-3 py-3 min-w-[140px] border-r border-gray-100">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                               <Phone className="h-3 w-3 text-green-600" />
                             </div>
-                            <span className="text-sm text-gray-800 font-mono font-medium truncate" title={formatPhoneNumber(report.recipient_number)}>
+                            <span className="text-xs text-gray-800 font-mono font-medium" title={formatPhoneNumber(report.recipient_number)}>
                               {formatPhoneNumber(report.recipient_number)}
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-5 w-[12%] border-r border-gray-100">
-                          {getStatusBadge(report.status)}
+                        <td className="px-3 py-3 min-w-[100px] border-r border-gray-100">
+                          <div className="scale-75 origin-left">
+                            {getStatusBadge(report.status)}
+                          </div>
                         </td>
-                        <td className="px-4 py-5 w-[16%] border-r border-gray-100">
+                        <td className="px-3 py-3 min-w-[130px] border-r border-gray-100">
                           <div className="flex flex-col gap-1">
                             {report.delivered_at ? (
                               <>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                <div className="flex items-center gap-1">
+                                  <div className="w-4 h-4 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <CheckCircle2 className="h-2 w-2 text-green-600" />
                                   </div>
-                                  <span className="text-xs font-semibold text-green-700">
+                                  <span className="text-[10px] font-semibold text-green-700">
                                     {new Date(report.delivered_at).toLocaleDateString('en-US', { 
                                       month: 'short', 
                                       day: 'numeric'
                                     })}
                                   </span>
                                 </div>
-                                <span className="text-xs text-gray-600 font-medium ml-7">
+                                <span className="text-[10px] text-gray-600 font-medium ml-5">
                                   {new Date(report.delivered_at).toLocaleTimeString('en-US', { 
                                     hour: '2-digit', 
                                     minute: '2-digit',
@@ -710,31 +712,31 @@ export default function ManageReports() {
                                 </span>
                               </>
                             ) : (
-                              <div className="flex items-center gap-2">
-                                <div className="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <Clock className="h-3 w-3 text-gray-400" />
+                              <div className="flex items-center gap-1">
+                                <div className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <Clock className="h-2 w-2 text-gray-400" />
                                 </div>
-                                <span className="text-xs text-gray-400 font-medium">Not delivered</span>
+                                <span className="text-[10px] text-gray-400 font-medium">Not delivered</span>
                               </div>
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-5 w-[14%] border-r border-gray-100">
+                        <td className="px-3 py-3 min-w-[120px] border-r border-gray-100">
                           <div className="flex flex-col gap-1">
                             {report.read_at ? (
                               <>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <CheckCircle2 className="h-3 w-3 text-purple-600" />
+                                <div className="flex items-center gap-1">
+                                  <div className="w-4 h-4 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <CheckCircle2 className="h-2 w-2 text-purple-600" />
                                   </div>
-                                  <span className="text-xs font-semibold text-purple-700">
+                                  <span className="text-[10px] font-semibold text-purple-700">
                                     {new Date(report.read_at).toLocaleDateString('en-US', { 
                                       month: 'short', 
                                       day: 'numeric'
                                     })}
                                   </span>
                                 </div>
-                                <span className="text-xs text-gray-600 font-medium ml-7">
+                                <span className="text-[10px] text-gray-600 font-medium ml-5">
                                   {new Date(report.read_at).toLocaleTimeString('en-US', { 
                                     hour: '2-digit', 
                                     minute: '2-digit',
@@ -743,52 +745,46 @@ export default function ManageReports() {
                                 </span>
                               </>
                             ) : (
-                              <div className="flex items-center gap-2">
-                                <div className="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <Clock className="h-3 w-3 text-gray-400" />
+                              <div className="flex items-center gap-1">
+                                <div className="w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <Clock className="h-2 w-2 text-gray-400" />
                                 </div>
-                                <span className="text-xs text-gray-400 font-medium">Not read</span>
+                                <span className="text-[10px] text-gray-400 font-medium">Not read</span>
                               </div>
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-5 w-[25%]">
+                        <td className="px-3 py-3 min-w-[200px]">
                           {report.error_message ? (
                             <div className="relative group">
-                              <div className="bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-400 rounded-r-lg px-3 py-2 cursor-help">
-                                <div className="flex items-start gap-2">
-                                  <XCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                              <div className="bg-gradient-to-r from-red-50 to-pink-50 border-l-2 border-red-400 rounded-r-md px-2 py-1 cursor-help">
+                                <div className="flex items-start gap-1">
+                                  <XCircle className="h-3 w-3 text-red-500 flex-shrink-0 mt-0.5" />
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-red-800 mb-1">Error Details</p>
-                                    <p className="text-xs text-red-700 font-medium leading-relaxed" style={{
-                                      display: '-webkit-box',
-                                      WebkitLineClamp: 2,
-                                      WebkitBoxOrient: 'vertical',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis'
-                                    }}>
+                                    <p className="text-[10px] font-semibold text-red-800 mb-0.5">Error</p>
+                                    <p className="text-[10px] text-red-700 font-medium leading-tight overflow-hidden">
                                       {report.error_message}
                                     </p>
                                   </div>
                                 </div>
                               </div>
                               {/* Enhanced tooltip */}
-                              <div className="absolute bottom-full left-0 mb-2 px-4 py-3 bg-gray-900 text-white text-xs rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 min-w-[320px] max-w-[450px]">
+                              <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 min-w-[300px] max-w-[400px]">
                                 <div className="break-words whitespace-normal leading-relaxed">
-                                  <p className="font-semibold mb-1 text-yellow-400">Complete Error Message:</p>
-                                  {report.error_message}
+                                  <p className="font-semibold mb-1 text-yellow-400">Complete Error:</p>
+                                  <p className="text-xs">{report.error_message}</p>
                                 </div>
-                                <div className="absolute top-full left-6 -mt-1">
+                                <div className="absolute top-full left-4 -mt-1">
                                   <div className="border-4 border-transparent border-t-gray-900"></div>
                                 </div>
                               </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <CheckCircle2 className="h-3 w-3 text-green-600" />
+                            <div className="flex items-center gap-1">
+                              <div className="w-4 h-4 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <CheckCircle2 className="h-2 w-2 text-green-600" />
                               </div>
-                              <span className="text-xs text-green-600 font-medium">No errors</span>
+                              <span className="text-[10px] text-green-600 font-medium">Success</span>
                             </div>
                           )}
                         </td>
