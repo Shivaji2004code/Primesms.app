@@ -18,9 +18,10 @@ RUN npm run build:client && npm run build
 # Remove devDependencies to reduce image size
 RUN npm ci --only=production && npm cache clean --force
 
-# Create uploads directory and copy static fallback
+# Create uploads directory and copy static files
 RUN mkdir -p uploads
 COPY static-fallback ./static-fallback
+COPY pre-built-client ./pre-built-client
 
 # Expose port
 EXPOSE 5050

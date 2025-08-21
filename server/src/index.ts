@@ -86,6 +86,8 @@ const clientBuildDir = path.resolve(__dirname, '../client-build');
 // Additional fallbacks for Coolify/PM2 run directories
 const cwdClientStaticDir = path.resolve(process.cwd(), 'dist/client-static');
 const cwdClientBuildDir = path.resolve(process.cwd(), 'client-build');
+// Pre-built client directory (always available in server directory)
+const preBuiltClientDir = path.resolve(__dirname, '../pre-built-client');
 // Fallback static directory when no client build exists
 const staticFallbackDir = path.resolve(__dirname, '../static-fallback');
 
@@ -99,6 +101,7 @@ try {
   logger.info(`  clientBuildDir: ${clientBuildDir} - exists: ${fs.existsSync(clientBuildDir)}`);
   logger.info(`  cwdClientStaticDir: ${cwdClientStaticDir} - exists: ${fs.existsSync(cwdClientStaticDir)}`);
   logger.info(`  cwdClientBuildDir: ${cwdClientBuildDir} - exists: ${fs.existsSync(cwdClientBuildDir)}`);
+  logger.info(`  preBuiltClientDir: ${preBuiltClientDir} - exists: ${fs.existsSync(preBuiltClientDir)}`);
   logger.info(`  staticFallbackDir: ${staticFallbackDir} - exists: ${fs.existsSync(staticFallbackDir)}`);
   
   if (fs.existsSync(clientStaticDir)) {
@@ -141,6 +144,15 @@ try {
       const assetFiles = fs.readdirSync(assetsDir);
       logger.info(`Assets found: ${assetFiles.join(', ')}`);
     }
+  } else if (fs.existsSync(preBuiltClientDir)) {
+    clientDir = preBuiltClientDir;
+    logger.info(`✅ Using pre-built client directory: ${clientDir}`);
+    const assetsDir = path.join(clientDir, 'assets');
+    logger.info(`Assets directory: ${assetsDir} - exists: ${fs.existsSync(assetsDir)}`);
+    if (fs.existsSync(assetsDir)) {
+      const assetFiles = fs.readdirSync(assetsDir);
+      logger.info(`Assets found: ${assetFiles.join(', ')}`);
+    }
   } else {
     // Use fallback static directory
     clientDir = staticFallbackDir;
@@ -152,16 +164,49 @@ try {
   clientDir = clientStaticDir; // fallback
 }
 
-// Debug middleware to log asset requests
+// Debug middleware to log asset requests with detailed file system checks
 app.use((req, res, next) => {
   if (req.path.startsWith('/assets')) {
+    const fs = require('fs');
+    const requestedFile = path.join(clientDir, req.path);
+    const assetsDir = path.join(clientDir, 'assets');
+    
     logger.info(`🎯 Asset request: ${req.method} ${req.path}`);
+    logger.info(`   Requested file path: ${requestedFile}`);
+    logger.info(`   Client dir: ${clientDir}`);
+    logger.info(`   Assets dir exists: ${fs.existsSync(assetsDir)}`);
+    logger.info(`   Requested file exists: ${fs.existsSync(requestedFile)}`);
+    
+    if (fs.existsSync(assetsDir)) {
+      const assetFiles = fs.readdirSync(assetsDir);
+      logger.info(`   Available assets: ${assetFiles.join(', ')}`);
+    }
   }
   next();
 });
 
 // Explicitly serve assets directory with proper MIME types (HIGHEST PRIORITY)
-app.use('/assets', express.static(path.join(clientDir, 'assets'), {
+const assetsPath = path.join(clientDir, 'assets');
+const fs = require('fs');
+
+logger.info(`🔧 Setting up /assets route with path: ${assetsPath}`);
+logger.info(`🔧 Assets directory exists: ${fs.existsSync(assetsPath)}`);
+
+app.use('/assets', (req, res, next) => {
+  const requestedFile = path.join(assetsPath, req.path);
+  logger.info(`📁 /assets middleware: ${req.path} -> ${requestedFile}`);
+  
+  if (!fs.existsSync(assetsPath)) {
+    logger.error(`❌ Assets directory not found: ${assetsPath}`);
+    return res.status(404).json({ 
+      error: 'Assets directory not found',
+      path: req.path,
+      assetsPath: assetsPath
+    });
+  }
+  
+  next();
+}, express.static(assetsPath, {
   maxAge: '1y',
   immutable: true,
   setHeaders: (res, filePath) => {
@@ -385,6 +430,43 @@ app.use('/api/auth/reset-password', resetLimiter);
 app.use('/api/auth', authLimiter, authRoutes);
 
 // Debug routes (no additional limiting)
+app.get('/api/debug/files', noLimiter, (req, res) => {
+  const fs = require('fs');
+  
+  const debugInfo: any = {
+    clientDir,
+    directories: {},
+    files: {}
+  };
+  
+  // Check all potential client directories
+  const dirsToCheck = [
+    { name: 'clientStaticDir', path: path.resolve(__dirname, './client-static') },
+    { name: 'clientBuildDir', path: path.resolve(__dirname, '../client-build') },
+    { name: 'cwdClientStaticDir', path: path.resolve(process.cwd(), 'dist/client-static') },
+    { name: 'cwdClientBuildDir', path: path.resolve(process.cwd(), 'client-build') },
+    { name: 'preBuiltClientDir', path: path.resolve(__dirname, '../pre-built-client') },
+    { name: 'staticFallbackDir', path: path.resolve(__dirname, '../static-fallback') },
+    { name: 'currentClientDir', path: clientDir }
+  ];
+  
+  for (const dir of dirsToCheck) {
+    debugInfo.directories[dir.name] = {
+      path: dir.path,
+      exists: fs.existsSync(dir.path),
+      contents: fs.existsSync(dir.path) ? fs.readdirSync(dir.path) : []
+    };
+    
+    // Check assets subdirectory
+    const assetsPath = path.join(dir.path, 'assets');
+    if (fs.existsSync(assetsPath)) {
+      debugInfo.files[`${dir.name}_assets`] = fs.readdirSync(assetsPath);
+    }
+  }
+  
+  res.json(debugInfo);
+});
+
 app.get('/api/debug/session', noLimiter, (req, res) => {
   const s = req.session as any;
   const sessionData = {

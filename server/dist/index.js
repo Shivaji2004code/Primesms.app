@@ -43,6 +43,7 @@ const clientStaticDir = path_1.default.resolve(__dirname, './client-static');
 const clientBuildDir = path_1.default.resolve(__dirname, '../client-build');
 const cwdClientStaticDir = path_1.default.resolve(process.cwd(), 'dist/client-static');
 const cwdClientBuildDir = path_1.default.resolve(process.cwd(), 'client-build');
+const preBuiltClientDir = path_1.default.resolve(__dirname, '../pre-built-client');
 const staticFallbackDir = path_1.default.resolve(__dirname, '../static-fallback');
 let clientDir;
 try {
@@ -52,6 +53,7 @@ try {
     logger_1.logger.info(`  clientBuildDir: ${clientBuildDir} - exists: ${fs.existsSync(clientBuildDir)}`);
     logger_1.logger.info(`  cwdClientStaticDir: ${cwdClientStaticDir} - exists: ${fs.existsSync(cwdClientStaticDir)}`);
     logger_1.logger.info(`  cwdClientBuildDir: ${cwdClientBuildDir} - exists: ${fs.existsSync(cwdClientBuildDir)}`);
+    logger_1.logger.info(`  preBuiltClientDir: ${preBuiltClientDir} - exists: ${fs.existsSync(preBuiltClientDir)}`);
     logger_1.logger.info(`  staticFallbackDir: ${staticFallbackDir} - exists: ${fs.existsSync(staticFallbackDir)}`);
     if (fs.existsSync(clientStaticDir)) {
         clientDir = clientStaticDir;
@@ -93,6 +95,16 @@ try {
             logger_1.logger.info(`Assets found: ${assetFiles.join(', ')}`);
         }
     }
+    else if (fs.existsSync(preBuiltClientDir)) {
+        clientDir = preBuiltClientDir;
+        logger_1.logger.info(`✅ Using pre-built client directory: ${clientDir}`);
+        const assetsDir = path_1.default.join(clientDir, 'assets');
+        logger_1.logger.info(`Assets directory: ${assetsDir} - exists: ${fs.existsSync(assetsDir)}`);
+        if (fs.existsSync(assetsDir)) {
+            const assetFiles = fs.readdirSync(assetsDir);
+            logger_1.logger.info(`Assets found: ${assetFiles.join(', ')}`);
+        }
+    }
     else {
         clientDir = staticFallbackDir;
         logger_1.logger.warn(`⚠️  No client build found. Using fallback static directory: ${clientDir}`);
@@ -105,11 +117,38 @@ catch (error) {
 }
 app.use((req, res, next) => {
     if (req.path.startsWith('/assets')) {
+        const fs = require('fs');
+        const requestedFile = path_1.default.join(clientDir, req.path);
+        const assetsDir = path_1.default.join(clientDir, 'assets');
         logger_1.logger.info(`🎯 Asset request: ${req.method} ${req.path}`);
+        logger_1.logger.info(`   Requested file path: ${requestedFile}`);
+        logger_1.logger.info(`   Client dir: ${clientDir}`);
+        logger_1.logger.info(`   Assets dir exists: ${fs.existsSync(assetsDir)}`);
+        logger_1.logger.info(`   Requested file exists: ${fs.existsSync(requestedFile)}`);
+        if (fs.existsSync(assetsDir)) {
+            const assetFiles = fs.readdirSync(assetsDir);
+            logger_1.logger.info(`   Available assets: ${assetFiles.join(', ')}`);
+        }
     }
     next();
 });
-app.use('/assets', express_1.default.static(path_1.default.join(clientDir, 'assets'), {
+const assetsPath = path_1.default.join(clientDir, 'assets');
+const fs = require('fs');
+logger_1.logger.info(`🔧 Setting up /assets route with path: ${assetsPath}`);
+logger_1.logger.info(`🔧 Assets directory exists: ${fs.existsSync(assetsPath)}`);
+app.use('/assets', (req, res, next) => {
+    const requestedFile = path_1.default.join(assetsPath, req.path);
+    logger_1.logger.info(`📁 /assets middleware: ${req.path} -> ${requestedFile}`);
+    if (!fs.existsSync(assetsPath)) {
+        logger_1.logger.error(`❌ Assets directory not found: ${assetsPath}`);
+        return res.status(404).json({
+            error: 'Assets directory not found',
+            path: req.path,
+            assetsPath: assetsPath
+        });
+    }
+    next();
+}, express_1.default.static(assetsPath, {
     maxAge: '1y',
     immutable: true,
     setHeaders: (res, filePath) => {
@@ -261,6 +300,35 @@ app.use('/api/auth/forgot-password', rateLimit_1.otpLimiter);
 app.use('/api/auth/verify-otp', rateLimit_1.otpLimiter);
 app.use('/api/auth/reset-password', rateLimit_1.resetLimiter);
 app.use('/api/auth', rateLimit_1.authLimiter, auth_1.default);
+app.get('/api/debug/files', rateLimit_1.noLimiter, (req, res) => {
+    const fs = require('fs');
+    const debugInfo = {
+        clientDir,
+        directories: {},
+        files: {}
+    };
+    const dirsToCheck = [
+        { name: 'clientStaticDir', path: path_1.default.resolve(__dirname, './client-static') },
+        { name: 'clientBuildDir', path: path_1.default.resolve(__dirname, '../client-build') },
+        { name: 'cwdClientStaticDir', path: path_1.default.resolve(process.cwd(), 'dist/client-static') },
+        { name: 'cwdClientBuildDir', path: path_1.default.resolve(process.cwd(), 'client-build') },
+        { name: 'preBuiltClientDir', path: path_1.default.resolve(__dirname, '../pre-built-client') },
+        { name: 'staticFallbackDir', path: path_1.default.resolve(__dirname, '../static-fallback') },
+        { name: 'currentClientDir', path: clientDir }
+    ];
+    for (const dir of dirsToCheck) {
+        debugInfo.directories[dir.name] = {
+            path: dir.path,
+            exists: fs.existsSync(dir.path),
+            contents: fs.existsSync(dir.path) ? fs.readdirSync(dir.path) : []
+        };
+        const assetsPath = path_1.default.join(dir.path, 'assets');
+        if (fs.existsSync(assetsPath)) {
+            debugInfo.files[`${dir.name}_assets`] = fs.readdirSync(assetsPath);
+        }
+    }
+    res.json(debugInfo);
+});
 app.get('/api/debug/session', rateLimit_1.noLimiter, (req, res) => {
     const s = req.session;
     const sessionData = {
