@@ -361,26 +361,79 @@ app.get('/templates', requireAuthWithRedirect, (req, res) => {
 // Where the built client will be placed by the build step
 const clientDir = path.resolve(__dirname, './client-static');
 
-// Serve static assets with sensible caching (immutable hashed assets cache 1y; html no-cache)
+// Explicitly serve assets directory with proper MIME types
+app.use('/assets', express.static(path.join(clientDir, 'assets'), {
+  maxAge: '1y',
+  immutable: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      logger.info(`Serving JS asset: ${filePath} with MIME type: application/javascript`);
+    } else if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css; charset=utf-8');
+      logger.info(`Serving CSS asset: ${filePath} with MIME type: text/css`);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+}));
+
+// Serve static assets with sensible caching and proper MIME types
 app.use(express.static(clientDir, {
   index: false,
   maxAge: '1y',
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) {
+    // Set proper MIME types for assets
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (filePath.endsWith('.html')) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else if (filePath.endsWith('.svg')) {
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (filePath.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (filePath.endsWith('.ico')) {
+      res.setHeader('Content-Type', 'image/x-icon');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     } else {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     }
   }
 }));
 
-// SPA fallback: everything NOT starting with /api or /health goes to index.html
+// Debug middleware to log all requests
+app.use((req, res, next) => {
+  logger.info(`Request: ${req.method} ${req.path} - User-Agent: ${req.get('User-Agent')?.substring(0, 50)}...`);
+  next();
+});
+
+// SPA fallback: everything NOT starting with /api, /health, or /assets goes to index.html
 app.get('*', (req, res, next) => {
-  // Never intercept API routes or health endpoints
+  // Never intercept API routes, health endpoints, or static assets
   if (req.path.startsWith('/api') || 
-      req.path.startsWith('/health')) {
+      req.path.startsWith('/health') ||
+      req.path.startsWith('/assets') ||
+      req.path.includes('.js') ||
+      req.path.includes('.css') ||
+      req.path.includes('.svg') ||
+      req.path.includes('.png') ||
+      req.path.includes('.jpg') ||
+      req.path.includes('.ico')) {
+    logger.info(`Skipping SPA fallback for: ${req.path}`);
     return next();
   }
+  
+  logger.info(`Serving SPA fallback for: ${req.path}`);
+  // Send index.html for SPA routes
   res.sendFile(path.join(clientDir, 'index.html'));
 });
 
