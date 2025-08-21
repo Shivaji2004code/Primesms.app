@@ -12,7 +12,7 @@ RUN npm ci
 # Copy all source files
 COPY . .
 
-# Build server only (pre-built client is included)
+# Build server (will attempt client build, fallback to existing client-build)
 RUN npm run build
 
 # Remove devDependencies to reduce image size

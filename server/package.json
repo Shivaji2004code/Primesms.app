@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "npm run build:client && tsc",
+    "build": "(npm run build:client || echo 'Client build failed, using existing client-build') && tsc",
     "build:dev": "npm run build:client && tsc",
     "build:client": "if [ -d ../client ]; then cd ../client && npm install && npm run build; else echo 'Client directory not found - assuming pre-built client-build exists'; fi",
     "build:production": "tsc",

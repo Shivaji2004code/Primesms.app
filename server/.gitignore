@@ -58,5 +58,3 @@ cert.pem
 chain.pem
 fullchain.pem
 
-# Keep client-build for Docker deployment
-# client-build/
