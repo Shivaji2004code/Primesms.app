@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npm run build:client && npm run build:server",
     "build:client": "cd client && npm run build",
-    "build:server": "cd server && npm run build && npm run copy:client",
+    "build:server": "cd server && npm run build",
     "build:prod": "npm run build",
     "build:production": "NODE_ENV=production npm run build:client && NODE_ENV=production npm run build:server",
     "start": "cd server && npm start",

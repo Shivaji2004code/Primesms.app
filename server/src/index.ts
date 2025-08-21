@@ -80,74 +80,52 @@ console.log('[HEALTH] Health endpoints mounted FIRST - always accessible');
 // STATIC FILE SERVING (SECOND PRIORITY - BEFORE ALL MIDDLEWARE)
 // ============================================================================
 
-// Production-aware client directory resolution
-const isProduction = process.env.NODE_ENV === 'production';
-
-// When running from dist/ (production), paths need to be relative to the actual working directory
-const localClientBuildDir = path.resolve(__dirname, '../client-build');  // dev: server/dist/../client-build -> server/client-build
-const prodClientStaticDir = path.resolve(__dirname, './client-static');  // prod: /app/dist/client-static
-const cwdClientBuildDir = path.resolve(process.cwd(), 'client-build');    // /app/client-build
-const cwdDistClientStatic = path.resolve(process.cwd(), 'dist/client-static'); // /app/dist/client-static
+// SIMPLIFIED: Always use client-build as single source of truth
+const localClientBuildDir = path.resolve(__dirname, '../client-build');   // dev: server/dist/../client-build
+const prodClientBuildDir = path.resolve(process.cwd(), 'client-build');   // prod: /app/client-build  
 const staticFallbackDir = path.resolve(__dirname, '../static-fallback');
 
 let clientDir: string = staticFallbackDir;
 try {
   const fs = require('fs');
   
-  logger.info(`🔍 Resolving client directory (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}):`);
+  logger.info(`🔍 Finding client-build directory:`);
   logger.info(`   Working dir: ${process.cwd()}`);
   logger.info(`   __dirname: ${__dirname}`);
   
-  // Function to check if a directory has valid assets
-  const hasValidAssets = (dir: string) => {
+  // Function to check if directory has assets
+  const hasAssets = (dir: string) => {
     const assetsDir = path.join(dir, 'assets');
     if (!fs.existsSync(assetsDir)) return false;
     const files = fs.readdirSync(assetsDir);
-    const hasJS = files.some((file: string) => file.endsWith('.js'));
-    const hasCSS = files.some((file: string) => file.endsWith('.css'));
-    return hasJS && hasCSS;
+    return files.some((f: string) => f.endsWith('.js')) && files.some((f: string) => f.endsWith('.css'));
   };
   
-  // Different priorities for development vs production
-  const candidates = isProduction ? [
-    { name: 'prod client-static (from dist)', path: prodClientStaticDir },     // /app/dist/client-static
-    { name: 'cwd dist/client-static', path: cwdDistClientStatic },             // /app/dist/client-static
-    { name: 'cwd client-build', path: cwdClientBuildDir },                     // /app/client-build
-    { name: 'local client-build', path: localClientBuildDir }                  // fallback
-  ] : [
-    { name: 'local client-build', path: localClientBuildDir },                 // server/client-build
-    { name: 'cwd client-build', path: cwdClientBuildDir },                     // ./client-build
-    { name: 'cwd dist/client-static', path: cwdDistClientStatic }              // ./dist/client-static
+  // Try client-build locations in order
+  const candidates = [
+    { name: 'local client-build', path: localClientBuildDir },   // server/client-build
+    { name: 'prod client-build', path: prodClientBuildDir }      // /app/client-build
   ];
   
-  let found = false;
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate.path)) {
-      const assetsDir = path.join(candidate.path, 'assets');
-      const hasAssets = fs.existsSync(assetsDir);
-      
-      logger.info(`  ${candidate.name}: ${candidate.path} - exists: ✓${hasAssets ? ' (with assets)' : ' (no assets)'}`);
-      
-      if (hasAssets) {
-        clientDir = candidate.path;
-        const assetFiles = fs.readdirSync(assetsDir);
-        logger.info(`✅ Using: ${clientDir}`);
-        logger.info(`📦 Assets: ${assetFiles.join(', ')}`);
-        found = true;
-        break;
-      }
+    logger.info(`   Checking ${candidate.name}: ${candidate.path}`);
+    if (fs.existsSync(candidate.path) && hasAssets(candidate.path)) {
+      clientDir = candidate.path;
+      const assetFiles = fs.readdirSync(path.join(clientDir, 'assets'));
+      logger.info(`✅ FOUND client-build: ${clientDir}`);
+      logger.info(`📦 Assets: ${assetFiles.join(', ')}`);
+      break;
     } else {
-      logger.info(`  ${candidate.name}: ${candidate.path} - missing: ✗`);
+      logger.info(`   ❌ Not found or no assets`);
     }
   }
   
-  if (!found) {
-    clientDir = staticFallbackDir;
-    logger.warn(`⚠️  No client build with assets found. Using fallback: ${clientDir}`);
+  if (clientDir === staticFallbackDir) {
+    logger.error(`❌ CLIENT-BUILD NOT FOUND! Using fallback.`);
+    logger.error(`   Make sure to build the client first: npm run build:client`);
   }
 } catch (error) {
-  logger.error(`❌ Error resolving client directory: ${error}`);
-  clientDir = staticFallbackDir;
+  logger.error(`❌ Error finding client-build: ${error}`);
 }
 
 // Debug middleware to log asset requests with detailed file system checks

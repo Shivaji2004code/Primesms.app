@@ -11,9 +11,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: process.env.NODE_ENV === 'production' && process.env.DOCKER_BUILD 
-      ? 'dist'  // In Docker, build to local dist folder
-      : '../server/client-build',  // In development, build to server folder
+    outDir: '../server/client-build',  // Always build to server/client-build
     emptyOutDir: true,
   },
   server: {

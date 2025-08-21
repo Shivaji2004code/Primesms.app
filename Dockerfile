@@ -11,8 +11,6 @@ COPY client/package*.json ./
 RUN npm install
 
 COPY client/ ./
-# Set Docker build flag so Vite builds to local dist folder
-ENV DOCKER_BUILD=true
 RUN npm run build
 
 # Stage 2: Build the server (Node.js/TypeScript)
@@ -41,10 +39,9 @@ RUN npm install --only=production
 COPY --from=server-builder /app/server/dist ./dist
 COPY --from=server-builder /app/server/ecosystem.config.js ./
 
-# Copy built client into server's static directory 
-# With DOCKER_BUILD=true, Vite builds to /app/client/dist
-COPY --from=client-builder /app/client/dist ./dist/client-static
-COPY --from=client-builder /app/client/dist ./client-build
+# Copy built client from server/client-build (where Vite always builds)
+# Vite builds to /app/server/client-build from the client-builder stage
+COPY --from=client-builder /app/server/client-build ./client-build
 
 # Copy database migration files for initialization
 COPY migration_add_app_secret.sql ./

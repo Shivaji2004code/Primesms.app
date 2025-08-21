@@ -39,64 +39,46 @@ exports.app = app;
 app.set('trust proxy', 1);
 app.use(health_1.default);
 console.log('[HEALTH] Health endpoints mounted FIRST - always accessible');
-const isProduction = process.env.NODE_ENV === 'production';
 const localClientBuildDir = path_1.default.resolve(__dirname, '../client-build');
-const prodClientStaticDir = path_1.default.resolve(__dirname, './client-static');
-const cwdClientBuildDir = path_1.default.resolve(process.cwd(), 'client-build');
-const cwdDistClientStatic = path_1.default.resolve(process.cwd(), 'dist/client-static');
+const prodClientBuildDir = path_1.default.resolve(process.cwd(), 'client-build');
 const staticFallbackDir = path_1.default.resolve(__dirname, '../static-fallback');
 let clientDir = staticFallbackDir;
 try {
     const fs = require('fs');
-    logger_1.logger.info(`🔍 Resolving client directory (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}):`);
+    logger_1.logger.info(`🔍 Finding client-build directory:`);
     logger_1.logger.info(`   Working dir: ${process.cwd()}`);
     logger_1.logger.info(`   __dirname: ${__dirname}`);
-    const hasValidAssets = (dir) => {
+    const hasAssets = (dir) => {
         const assetsDir = path_1.default.join(dir, 'assets');
         if (!fs.existsSync(assetsDir))
             return false;
         const files = fs.readdirSync(assetsDir);
-        const hasJS = files.some((file) => file.endsWith('.js'));
-        const hasCSS = files.some((file) => file.endsWith('.css'));
-        return hasJS && hasCSS;
+        return files.some((f) => f.endsWith('.js')) && files.some((f) => f.endsWith('.css'));
     };
-    const candidates = isProduction ? [
-        { name: 'prod client-static (from dist)', path: prodClientStaticDir },
-        { name: 'cwd dist/client-static', path: cwdDistClientStatic },
-        { name: 'cwd client-build', path: cwdClientBuildDir },
-        { name: 'local client-build', path: localClientBuildDir }
-    ] : [
+    const candidates = [
         { name: 'local client-build', path: localClientBuildDir },
-        { name: 'cwd client-build', path: cwdClientBuildDir },
-        { name: 'cwd dist/client-static', path: cwdDistClientStatic }
+        { name: 'prod client-build', path: prodClientBuildDir }
     ];
-    let found = false;
     for (const candidate of candidates) {
-        if (fs.existsSync(candidate.path)) {
-            const assetsDir = path_1.default.join(candidate.path, 'assets');
-            const hasAssets = fs.existsSync(assetsDir);
-            logger_1.logger.info(`  ${candidate.name}: ${candidate.path} - exists: ✓${hasAssets ? ' (with assets)' : ' (no assets)'}`);
-            if (hasAssets) {
-                clientDir = candidate.path;
-                const assetFiles = fs.readdirSync(assetsDir);
-                logger_1.logger.info(`✅ Using: ${clientDir}`);
-                logger_1.logger.info(`📦 Assets: ${assetFiles.join(', ')}`);
-                found = true;
-                break;
-            }
+        logger_1.logger.info(`   Checking ${candidate.name}: ${candidate.path}`);
+        if (fs.existsSync(candidate.path) && hasAssets(candidate.path)) {
+            clientDir = candidate.path;
+            const assetFiles = fs.readdirSync(path_1.default.join(clientDir, 'assets'));
+            logger_1.logger.info(`✅ FOUND client-build: ${clientDir}`);
+            logger_1.logger.info(`📦 Assets: ${assetFiles.join(', ')}`);
+            break;
         }
         else {
-            logger_1.logger.info(`  ${candidate.name}: ${candidate.path} - missing: ✗`);
+            logger_1.logger.info(`   ❌ Not found or no assets`);
         }
     }
-    if (!found) {
-        clientDir = staticFallbackDir;
-        logger_1.logger.warn(`⚠️  No client build with assets found. Using fallback: ${clientDir}`);
+    if (clientDir === staticFallbackDir) {
+        logger_1.logger.error(`❌ CLIENT-BUILD NOT FOUND! Using fallback.`);
+        logger_1.logger.error(`   Make sure to build the client first: npm run build:client`);
     }
 }
 catch (error) {
-    logger_1.logger.error(`❌ Error resolving client directory: ${error}`);
-    clientDir = staticFallbackDir;
+    logger_1.logger.error(`❌ Error finding client-build: ${error}`);
 }
 app.use((req, res, next) => {
     if (req.path.startsWith('/assets')) {
