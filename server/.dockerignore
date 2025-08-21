@@ -5,8 +5,8 @@
 # Dependencies
 node_modules
 dist
-# Keep pre-built client and static fallback
-!pre-built-client
+# Keep client-build and static fallback
+!client-build
 !static-fallback
 
 # Logs
