@@ -22,6 +22,7 @@ import { FadeIn, SoftHoverCard, motionTimings } from './ui/motion-components';
 export type WalletTopUpProps = {
   initialAmount?: number;
   onCheckout?: (amount: number) => void | Promise<void>;
+  onPaymentSuccess?: () => void;
   min?: number;
   max?: number;
   className?: string;
@@ -113,6 +114,7 @@ const useTopUp = (initialAmount?: number, min = 1, max = 100000) => {
 export const WalletTopUp: React.FC<WalletTopUpProps> = ({
   initialAmount,
   onCheckout,
+  onPaymentSuccess,
   min = 1,
   max = 100000,
   className
@@ -215,13 +217,30 @@ export const WalletTopUp: React.FC<WalletTopUpProps> = ({
 
             const verifyData = await verifyResponse.json();
 
+            console.log('💰 🔍 FRONTEND: Payment verification response:', verifyData);
+            
             if (verifyData.success) {
+              console.log('💰 ✅ FRONTEND: Payment verification successful!', {
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id,
+                amount: amount,
+                verifyData
+              });
+              
               setShowSuccess(true);
-              // Reload the page to refresh balance, then redirect
+              
+              // Call success callback to refresh parent balance
+              console.log('💰 🔄 FRONTEND: Calling onPaymentSuccess callback...');
+              onPaymentSuccess?.();
+              
+              // Force reload to get fresh data from server
+              console.log('💰 🔄 FRONTEND: Scheduling page reload in 2 seconds...');
               setTimeout(() => {
-                window.location.href = '/user/wallet';
+                console.log('💰 🔄 FRONTEND: Reloading page to refresh balance...');
+                window.location.reload();
               }, 2000);
             } else {
+              console.error('💰 ❌ FRONTEND: Payment verification failed:', verifyData);
               throw new Error(verifyData.error || 'Payment verification failed');
             }
           } catch (error) {

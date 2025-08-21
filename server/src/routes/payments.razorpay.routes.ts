@@ -146,7 +146,17 @@ router.post('/verify', requireAuth, async (req: Request, res: Response) => {
     // Idempotency check
     if (!walletStore.isPaymentProcessed(paymentId)) {
       try {
-        logger.info(`💰 Starting credit wallet process for user ${order.userId}, amount: ${order.amountCredits}, payment: ${paymentId}`);
+        logger.info(`💰 🔄 Starting credit wallet process for user ${order.userId}, amount: ${order.amountCredits}, payment: ${paymentId}`);
+        
+        // Check user's current balance before crediting
+        const { default: pool } = await import('../db');
+        const preBalanceResult = await pool.query(
+          'SELECT credit_balance, name, email FROM users WHERE id = $1',
+          [order.userId]
+        );
+        
+        const preCreditBalance = preBalanceResult.rows[0]?.credit_balance || 0;
+        logger.info(`💰 📊 BEFORE CREDIT: User ${order.userId} (${preBalanceResult.rows[0]?.name}) balance: ₹${preCreditBalance}`);
         
         // Credit the wallet
         await walletStore.creditWallet(
@@ -155,6 +165,26 @@ router.post('/verify', requireAuth, async (req: Request, res: Response) => {
           paymentId,
           `Razorpay payment verification (Order: ${orderId})`
         );
+
+        // Check user's balance after crediting
+        const postBalanceResult = await pool.query(
+          'SELECT credit_balance FROM users WHERE id = $1',
+          [order.userId]
+        );
+        
+        const postCreditBalance = postBalanceResult.rows[0]?.credit_balance || 0;
+        logger.info(`💰 📊 AFTER CREDIT: User ${order.userId} balance: ₹${postCreditBalance} (increase: ₹${postCreditBalance - preCreditBalance})`);
+        
+        // Verify the credit was actually added
+        const expectedBalance = parseFloat(preCreditBalance) + parseFloat(order.amountCredits);
+        const actualBalance = parseFloat(postCreditBalance);
+        
+        if (Math.abs(actualBalance - expectedBalance) < 0.01) {
+          logger.info(`💰 ✅ VERIFIED: Credit addition successful. Expected: ₹${expectedBalance}, Actual: ₹${actualBalance}`);
+        } else {
+          logger.error(`💰 ❌ MISMATCH: Credit addition failed. Expected: ₹${expectedBalance}, Actual: ₹${actualBalance}`);
+          throw new Error(`Credit verification failed: expected ₹${expectedBalance}, got ₹${actualBalance}`);
+        }
 
         // Mark as processed
         walletStore.markPaymentProcessed(paymentId);

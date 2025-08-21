@@ -27,23 +27,38 @@ export default function WalletTopUpPage() {
 
   const fetchCreditBalance = async () => {
     try {
+      console.log('💰 🔄 WALLET PAGE: Starting balance fetch...');
       setIsLoadingBalance(true);
-      const response = await fetch('/api/auth/me', {
-        credentials: 'include'
+      const timestamp = Date.now();
+      const url = `/api/auth/me?t=${timestamp}`;
+      
+      console.log('💰 🔍 WALLET PAGE: Fetching from:', url);
+      const response = await fetch(url, {
+        credentials: 'include',
+        cache: 'no-cache'
       });
+      
+      console.log('💰 📊 WALLET PAGE: Fetch response status:', response.status, response.statusText);
       
       if (response.ok) {
         const userData = await response.json();
-        setCurrentBalance(userData.user?.creditBalance || 0);
+        const newBalance = userData.user?.creditBalance || 0;
+        console.log('💰 ✅ WALLET PAGE: Balance fetched successfully:', {
+          oldBalance: currentBalance,
+          newBalance: newBalance,
+          userData: userData.user
+        });
+        setCurrentBalance(newBalance);
       } else {
-        console.error('Failed to fetch user data');
+        console.error('💰 ❌ WALLET PAGE: Failed to fetch user data, using fallback');
         setCurrentBalance(user?.creditBalance || 0);
       }
     } catch (error) {
-      console.error('Error fetching credit balance:', error);
+      console.error('💰 ❌ WALLET PAGE: Error fetching credit balance:', error);
       setCurrentBalance(user?.creditBalance || 0);
     } finally {
       setIsLoadingBalance(false);
+      console.log('💰 🏁 WALLET PAGE: Balance fetch completed');
     }
   };
 
@@ -53,6 +68,15 @@ export default function WalletTopUpPage() {
     toast.info('Processing payment...', {
       description: 'Please complete the payment in the Razorpay window'
     });
+  };
+
+  const handlePaymentSuccess = () => {
+    console.log('💰 🎉 WALLET PAGE: Payment success callback triggered!');
+    // Refresh balance after successful payment
+    setTimeout(() => {
+      console.log('💰 🔄 WALLET PAGE: Refreshing balance after payment success...');
+      fetchCreditBalance();
+    }, 1000);
   };
 
   const refreshBalance = () => {
@@ -120,6 +144,7 @@ export default function WalletTopUpPage() {
             <FadeIn delay={0.2}>
               <WalletTopUp
                 onCheckout={handleTopUp}
+                onPaymentSuccess={handlePaymentSuccess}
                 className="w-full"
               />
             </FadeIn>
