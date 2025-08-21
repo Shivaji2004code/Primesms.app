@@ -43,6 +43,7 @@ const clientStaticDir = path_1.default.resolve(__dirname, './client-static');
 const clientBuildDir = path_1.default.resolve(__dirname, '../client-build');
 const cwdClientStaticDir = path_1.default.resolve(process.cwd(), 'dist/client-static');
 const cwdClientBuildDir = path_1.default.resolve(process.cwd(), 'client-build');
+const staticFallbackDir = path_1.default.resolve(__dirname, '../static-fallback');
 let clientDir;
 try {
     const fs = require('fs');
@@ -51,6 +52,7 @@ try {
     logger_1.logger.info(`  clientBuildDir: ${clientBuildDir} - exists: ${fs.existsSync(clientBuildDir)}`);
     logger_1.logger.info(`  cwdClientStaticDir: ${cwdClientStaticDir} - exists: ${fs.existsSync(cwdClientStaticDir)}`);
     logger_1.logger.info(`  cwdClientBuildDir: ${cwdClientBuildDir} - exists: ${fs.existsSync(cwdClientBuildDir)}`);
+    logger_1.logger.info(`  staticFallbackDir: ${staticFallbackDir} - exists: ${fs.existsSync(staticFallbackDir)}`);
     if (fs.existsSync(clientStaticDir)) {
         clientDir = clientStaticDir;
         logger_1.logger.info(`✅ Using client directory: ${clientDir}`);
@@ -92,7 +94,9 @@ try {
         }
     }
     else {
-        throw new Error(`No client directory found. Checked: ${clientStaticDir}, ${clientBuildDir}, ${cwdClientStaticDir}, ${cwdClientBuildDir}`);
+        clientDir = staticFallbackDir;
+        logger_1.logger.warn(`⚠️  No client build found. Using fallback static directory: ${clientDir}`);
+        logger_1.logger.warn(`   This will serve a basic landing page. Deploy from project root to include React frontend.`);
     }
 }
 catch (error) {

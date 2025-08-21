@@ -12,14 +12,15 @@ RUN npm ci
 # Copy all source files
 COPY . .
 
-# Build application (TypeScript only, client should already be built)
-RUN npm run build
+# Build client first, then server
+RUN npm run build:client && npm run build
 
 # Remove devDependencies to reduce image size
 RUN npm ci --only=production && npm cache clean --force
 
-# Create uploads directory
+# Create uploads directory and copy static fallback
 RUN mkdir -p uploads
+COPY static-fallback ./static-fallback
 
 # Expose port
 EXPOSE 5050

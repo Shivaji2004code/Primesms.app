@@ -86,6 +86,8 @@ const clientBuildDir = path.resolve(__dirname, '../client-build');
 // Additional fallbacks for Coolify/PM2 run directories
 const cwdClientStaticDir = path.resolve(process.cwd(), 'dist/client-static');
 const cwdClientBuildDir = path.resolve(process.cwd(), 'client-build');
+// Fallback static directory when no client build exists
+const staticFallbackDir = path.resolve(__dirname, '../static-fallback');
 
 // Check which directory exists and use it
 let clientDir: string;
@@ -97,6 +99,7 @@ try {
   logger.info(`  clientBuildDir: ${clientBuildDir} - exists: ${fs.existsSync(clientBuildDir)}`);
   logger.info(`  cwdClientStaticDir: ${cwdClientStaticDir} - exists: ${fs.existsSync(cwdClientStaticDir)}`);
   logger.info(`  cwdClientBuildDir: ${cwdClientBuildDir} - exists: ${fs.existsSync(cwdClientBuildDir)}`);
+  logger.info(`  staticFallbackDir: ${staticFallbackDir} - exists: ${fs.existsSync(staticFallbackDir)}`);
   
   if (fs.existsSync(clientStaticDir)) {
     clientDir = clientStaticDir;
@@ -139,7 +142,10 @@ try {
       logger.info(`Assets found: ${assetFiles.join(', ')}`);
     }
   } else {
-    throw new Error(`No client directory found. Checked: ${clientStaticDir}, ${clientBuildDir}, ${cwdClientStaticDir}, ${cwdClientBuildDir}`);
+    // Use fallback static directory
+    clientDir = staticFallbackDir;
+    logger.warn(`⚠️  No client build found. Using fallback static directory: ${clientDir}`);
+    logger.warn(`   This will serve a basic landing page. Deploy from project root to include React frontend.`);
   }
 } catch (error) {
   logger.error(`❌ Error determining client directory: ${error}`);
