@@ -147,6 +147,26 @@ app.use('/assets', (req, res, next) => {
             assetsPath: assetsPath
         });
     }
+    const fileExt = path_1.default.extname(req.path);
+    if (!fs.existsSync(requestedFile) && (fileExt === '.js' || fileExt === '.css')) {
+        logger_1.logger.warn(`⚠️ Asset not found: ${req.path}. Trying to find a matching file...`);
+        try {
+            const files = fs.readdirSync(assetsPath);
+            const matchingFile = files.find((file) => path_1.default.extname(file) === fileExt);
+            if (matchingFile) {
+                logger_1.logger.info(`✅ Found matching ${fileExt} file: ${matchingFile}`);
+                return res.sendFile(path_1.default.join(assetsPath, matchingFile), {
+                    headers: {
+                        'Content-Type': fileExt === '.js' ? 'application/javascript; charset=utf-8' : 'text/css; charset=utf-8',
+                        'Cache-Control': 'public, max-age=31536000, immutable'
+                    }
+                });
+            }
+        }
+        catch (error) {
+            logger_1.logger.error(`❌ Error finding matching file: ${error}`);
+        }
+    }
     next();
 }, express_1.default.static(assetsPath, {
     maxAge: '1y',
@@ -375,7 +395,48 @@ app.get('/refresh', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    res.sendFile(path_1.default.join(clientDir, 'index.html'));
+    const indexPath = path_1.default.join(clientDir, 'index.html');
+    try {
+        let indexContent = fs.readFileSync(indexPath, 'utf8');
+        const assetsDir = path_1.default.join(clientDir, 'assets');
+        if (fs.existsSync(assetsDir)) {
+            const files = fs.readdirSync(assetsDir);
+            const jsFile = files.find((file) => file.endsWith('.js'));
+            const cssFile = files.find((file) => file.endsWith('.css'));
+            if (jsFile && cssFile) {
+                indexContent = indexContent
+                    .replace(/src="\/assets\/.*?\.js"/g, `src="/assets/${jsFile}"`)
+                    .replace(/href="\/assets\/.*?\.css"/g, `href="/assets/${cssFile}"`);
+                logger_1.logger.info(`✅ Modified refresh index.html to use available assets: JS=${jsFile}, CSS=${cssFile}`);
+            }
+        }
+        res.send(indexContent);
+    }
+    catch (error) {
+        logger_1.logger.error(`❌ Error serving modified index.html: ${error}`);
+        res.sendFile(indexPath);
+    }
+});
+app.get('/debug-assets', (req, res) => {
+    const assetsDir = path_1.default.join(clientDir, 'assets');
+    const indexPath = path_1.default.join(clientDir, 'index.html');
+    const result = {
+        clientDir,
+        assetsPath,
+        assetsExists: fs.existsSync(assetsDir),
+        indexExists: fs.existsSync(indexPath),
+        availableAssets: [],
+        indexContents: '',
+        userAgent: req.get('User-Agent'),
+        timestamp: new Date().toISOString()
+    };
+    if (result.assetsExists) {
+        result.availableAssets = fs.readdirSync(assetsDir);
+    }
+    if (result.indexExists) {
+        result.indexContents = fs.readFileSync(indexPath, 'utf8');
+    }
+    res.json(result);
 });
 app.use('/api', (req, res) => {
     return res.status(404).json({ error: 'ROUTE_NOT_FOUND', path: req.originalUrl });
@@ -436,7 +497,31 @@ app.get('*', (req, res, next) => {
         return next();
     }
     logger_1.logger.info(`Serving SPA fallback for: ${req.path}`);
-    res.sendFile(path_1.default.join(clientDir, 'index.html'));
+    const indexPath = path_1.default.join(clientDir, 'index.html');
+    try {
+        let indexContent = fs.readFileSync(indexPath, 'utf8');
+        const assetsDir = path_1.default.join(clientDir, 'assets');
+        if (fs.existsSync(assetsDir)) {
+            const files = fs.readdirSync(assetsDir);
+            const jsFile = files.find((file) => file.endsWith('.js'));
+            const cssFile = files.find((file) => file.endsWith('.css'));
+            if (jsFile && cssFile) {
+                indexContent = indexContent
+                    .replace(/src="\/assets\/.*?\.js"/g, `src="/assets/${jsFile}"`)
+                    .replace(/href="\/assets\/.*?\.css"/g, `href="/assets/${cssFile}"`);
+                logger_1.logger.info(`✅ Modified index.html to use available assets: JS=${jsFile}, CSS=${cssFile}`);
+            }
+        }
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.send(indexContent);
+    }
+    catch (error) {
+        logger_1.logger.error(`❌ Error serving modified index.html: ${error}`);
+        res.sendFile(indexPath);
+    }
 });
 app.use('*', errorHandler_1.notFoundHandler);
 app.use(errorHandler_1.errorHandler);
