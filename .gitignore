@@ -125,8 +125,6 @@ access_token.txt
 app_secret.txt
 
 # Build artifacts that should be generated during deployment
-client-build/
-server/client-build/
 
 # Local development files
 *.local
