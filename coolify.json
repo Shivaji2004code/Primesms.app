@@ -2,7 +2,7 @@
   "name": "primesms-app",
   "type": "docker-compose",
   "dockerComposeFile": "docker-compose.production.yml",
-  "buildCommand": "cd client && npm ci && npm run build && cd ../server && npm ci && npm run build && npm run copy:client:dev",
+  "buildCommand": "npm run build:production",
   "startCommand": "cd server && npm run start:prod",
   "environment": {
     "NODE_ENV": "production",

@@ -152,6 +152,9 @@ export default function WhatsAppBulkMessaging() {
     preview: false,
     sending: false,
   });
+
+  // Send button loading state
+  const [sendingCampaign, setSendingCampaign] = useState(false);
   
   // Alert state
   const [alertState, setAlertState] = useState<{
@@ -599,6 +602,7 @@ export default function WhatsAppBulkMessaging() {
 
   const confirmAndSend = async () => {
     setShowPricingModal(false);
+    setSendingCampaign(true);
 
     // Check if we should use bulk messaging (more than 50 recipients)
     if (recipients.length > 50) {
@@ -616,17 +620,22 @@ export default function WhatsAppBulkMessaging() {
       headerImage
     };
 
-    // Show immediate success popup without waiting for backend response
-    setSuccessModal({
-      show: true,
-      title: 'Campaign Started Successfully!',
-      message: `Your campaign has been started and is being processed in batches. You can check detailed reports for delivery status.`,
-      successCount: recipients.length,
-      failedCount: 0
-    });
-    
-    // Reset form immediately
-    resetForm();
+    // Add 1 second delay before showing success modal
+    setTimeout(() => {
+      setSendingCampaign(false);
+      
+      // Show success popup after delay
+      setSuccessModal({
+        show: true,
+        title: 'Campaign Started Successfully!',
+        message: `Your campaign has been started and is being processed in batches. You can check detailed reports for delivery status.`,
+        successCount: recipients.length,
+        failedCount: 0
+      });
+      
+      // Reset form after showing success
+      resetForm();
+    }, 1000);
 
     // Send to backend asynchronously (fire and forget)
     try {
@@ -686,17 +695,22 @@ export default function WhatsAppBulkMessaging() {
       headerImage
     };
 
-    // Show immediate success popup without waiting for backend response
-    setSuccessModal({
-      show: true,
-      title: 'Campaign Started Successfully!',
-      message: `Your bulk campaign has been started and is being processed in batches. You can check detailed reports for delivery status.`,
-      successCount: recipients.length,
-      failedCount: 0
-    });
-    
-    // Reset form immediately
-    resetForm();
+    // Add 1 second delay before showing success modal
+    setTimeout(() => {
+      setSendingCampaign(false);
+      
+      // Show success popup after delay
+      setSuccessModal({
+        show: true,
+        title: 'Campaign Started Successfully!',
+        message: `Your bulk campaign has been started and is being processed in batches. You can check detailed reports for delivery status.`,
+        successCount: recipients.length,
+        failedCount: 0
+      });
+      
+      // Reset form after showing success
+      resetForm();
+    }, 1000);
 
     // Send to backend asynchronously (fire and forget)
     try {
@@ -873,7 +887,47 @@ export default function WhatsAppBulkMessaging() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <style>{`
+        @keyframes fadeInScale {
+          0% {
+            opacity: 0;
+            transform: scale(0.3);
+          }
+          50% {
+            opacity: 0.8;
+            transform: scale(1.1);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        
+        @keyframes fadeInUp {
+          0% {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fade-in-up {
+          animation: fadeInUp 0.6s ease-out forwards;
+        }
+        
+        .animate-tick-success {
+          animation: fadeInScale 0.8s ease-out, bounce 1.2s ease-in-out 2 alternate 0.3s;
+        }
+        
+        .animate-modal-slide-in {
+          animation: fadeInUp 0.4s ease-out;
+        }
+      `}</style>
+      <div className="space-y-6">
       {/* Progress Indicator */}
       <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200">
         <CardContent className="p-6">
@@ -1340,11 +1394,20 @@ export default function WhatsAppBulkMessaging() {
           <div className="flex justify-center">
             <Button
               onClick={handleQuickSend}
-              disabled={!selectedNumber || !selectedTemplate || recipients.length === 0}
-              className="w-full h-14 bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-800 hover:to-emerald-900 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              disabled={!selectedNumber || !selectedTemplate || recipients.length === 0 || sendingCampaign}
+              className="w-full h-14 bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-800 hover:to-emerald-900 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              <Send className="h-5 w-5 mr-2" />
-              {recipients.length > 50 ? 'Bulk Send' : 'Quick Send'} ({recipients.length})
+              {sendingCampaign ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Sending Campaign...
+                </>
+              ) : (
+                <>
+                  <Send className="h-5 w-5 mr-2" />
+                  {recipients.length > 50 ? 'Bulk Send' : 'Quick Send'} ({recipients.length})
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -1571,17 +1634,18 @@ export default function WhatsAppBulkMessaging() {
       {/* Success Modal - Matching Cost Preview Style */}
       {successModal.show && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-modal-slide-in">
             <div className="p-6">
-              {/* Simple Header */}
+              {/* Animated Header */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-green-200 rounded-full animate-ping opacity-75"></div>
+                    <CheckCircle2 className="h-5 w-5 text-green-600 relative z-10 animate-tick-success" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">{successModal.title}</h3>
-                    <p className="text-sm text-gray-600">{successModal.message}</p>
+                    <h3 className="text-xl font-bold text-gray-900 animate-fade-in-up">{successModal.title}</h3>
+                    <p className="text-sm text-gray-600 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>{successModal.message}</p>
                   </div>
                 </div>
                 <Button
@@ -1630,6 +1694,7 @@ export default function WhatsAppBulkMessaging() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

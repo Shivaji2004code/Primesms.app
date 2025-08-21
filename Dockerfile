@@ -8,7 +8,7 @@ FROM node:18-alpine AS client-builder
 
 WORKDIR /app/client
 COPY client/package*.json ./
-RUN npm ci --only=production
+RUN npm install
 
 COPY client/ ./
 RUN npm run build
@@ -18,7 +18,7 @@ FROM node:18-alpine AS server-builder
 
 WORKDIR /app/server
 COPY server/package*.json ./
-RUN npm ci --only=production && npm ci --only=development
+RUN npm install
 
 COPY server/ ./
 RUN npm run build
@@ -33,7 +33,7 @@ WORKDIR /app
 
 # Install only production dependencies
 COPY server/package*.json ./
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Copy built server
 COPY --from=server-builder /app/server/dist ./dist
