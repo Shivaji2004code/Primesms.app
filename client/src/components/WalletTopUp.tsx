@@ -169,15 +169,97 @@ export const WalletTopUp: React.FC<WalletTopUpProps> = ({
 
     setLoading(true);
     try {
+      // Create Razorpay order
+      const orderResponse = await fetch('/api/payments/razorpay/order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ amountCredits: amount }),
+      });
+
+      const orderData = await orderResponse.json();
+
+      if (!orderData.success) {
+        throw new Error(orderData.error || 'Failed to create payment order');
+      }
+
+      // Load Razorpay checkout script
+      await loadRazorpayScript();
+
+      // Open Razorpay checkout
+      const razorpay = new (window as any).Razorpay({
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Prime SMS',
+        description: `${formatIndianNumber(amount)} credits top-up`,
+        order_id: orderData.orderId,
+        handler: async (response: any) => {
+          try {
+            // Verify payment on server
+            const verifyResponse = await fetch('/api/payments/razorpay/verify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                amountCredits: amount,
+              }),
+            });
+
+            const verifyData = await verifyResponse.json();
+
+            if (verifyData.success) {
+              setShowSuccess(true);
+              setTimeout(() => {
+                setShowSuccess(false);
+                window.location.href = '/user/dashboard';
+              }, 1500);
+            } else {
+              throw new Error(verifyData.error || 'Payment verification failed');
+            }
+          } catch (error) {
+            console.error('Payment verification failed:', error);
+            alert(`Payment verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            console.log('Payment cancelled by user');
+          }
+        },
+        theme: {
+          color: '#3b82f6'
+        },
+        prefill: {
+          name: '',
+          email: '',
+          contact: ''
+        },
+        notes: {
+          purpose: 'wallet_topup',
+          credits: amount.toString()
+        }
+      });
+
+      razorpay.open();
+      
+      // Call the original onCheckout if provided
       await onCheckout?.(amount);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      
     } catch (err) {
       console.error('Checkout failed:', err);
+      alert(`Payment failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
-  }, [isValid, amount, isLoading, onCheckout, setLoading]);
+  }, [isValid, amount, isLoading, onCheckout, setLoading, formatIndianNumber]);
 
   const presetVariants = {
     rest: { scale: 1, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
@@ -398,5 +480,24 @@ export const WalletTopUp: React.FC<WalletTopUpProps> = ({
     </div>
   );
 };
+
+/**
+ * Utility function to load Razorpay checkout script
+ */
+function loadRazorpayScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Check if script is already loaded
+    if ((window as any).Razorpay) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Razorpay script'));
+    document.body.appendChild(script);
+  });
+}
 
 export default WalletTopUp;

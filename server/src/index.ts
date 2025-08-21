@@ -38,6 +38,7 @@ import sseRouter from './routes/sseRoutes';
 import templatesSyncRouter from './routes/templatesSync';
 import templatesDebugRouter from './routes/templatesDebug';
 import templatesSyncDirectRouter from './routes/templatesSyncDirect';
+import paymentsRazorpayRoutes from './routes/payments.razorpay.routes';
 
 // Import middleware
 import { requireAuthWithRedirect } from './middleware/auth';
@@ -230,6 +231,11 @@ app.use('/webhooks', express.json({
 }), metaWebhookRouter);
 
 console.log('[WEBHOOKS] Meta webhook routes mounted at /webhooks/*');
+
+// Razorpay webhook route (needs raw body parsing)
+app.use('/api/payments/razorpay/webhook', paymentsRazorpayRoutes);
+
+console.log('[PAYMENTS] Razorpay webhook route mounted with raw body parsing');
 
 // ============================================================================
 // MIDDLEWARE CONFIGURATION (REQUIRED ORDER)
@@ -506,6 +512,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEBUG_ROUTES ===
 // Write-heavy routes (reasonable limits for messaging operations)
 app.use('/api/whatsapp', writeLimiter, whatsappRoutes);
 app.use('/api/send', writeLimiter, sendRoutes);
+
+// Payment routes (moderate limits for financial operations)
+app.use('/api/payments/razorpay', writeLimiter, paymentsRazorpayRoutes);
 
 
 // SSE routes for real-time updates (no rate limiting for persistent connections)

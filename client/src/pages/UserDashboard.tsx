@@ -147,6 +147,14 @@ export default function UserDashboard() {
             <div className="text-center px-6 py-4 bg-gray-50 rounded-xl">
               <div className="text-2xl font-bold text-gray-900 mb-1">{stats.credits.toLocaleString()}</div>
               <div className="text-sm text-gray-600">Available Credits</div>
+              <Button
+                size="sm"
+                onClick={() => navigate('/user/wallet-demo')}
+                className="mt-2 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <CreditCard className="h-3 w-3 mr-1" />
+                Top Up
+              </Button>
             </div>
           </div>
         </div>
@@ -237,7 +245,15 @@ export default function UserDashboard() {
                   </div>
                   <div className="text-2xl font-bold text-blue-900 mb-2">{stats.credits.toLocaleString()}</div>
                   <div className="text-blue-700 font-medium mb-1">Available Credits</div>
-                  <div className="text-blue-600 text-xs">Ready to use</div>
+                  <div className="text-blue-600 text-xs mb-3">Ready to use</div>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate('/user/wallet-demo')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Zap className="h-3 w-3 mr-1" />
+                    Top Up Wallet
+                  </Button>
                 </SoftHoverCard>
               </div>
             </div>

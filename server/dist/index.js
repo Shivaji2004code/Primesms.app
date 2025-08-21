@@ -31,6 +31,7 @@ const sseRoutes_1 = __importDefault(require("./routes/sseRoutes"));
 const templatesSync_1 = __importDefault(require("./routes/templatesSync"));
 const templatesDebug_1 = __importDefault(require("./routes/templatesDebug"));
 const templatesSyncDirect_1 = __importDefault(require("./routes/templatesSyncDirect"));
+const payments_razorpay_routes_1 = __importDefault(require("./routes/payments.razorpay.routes"));
 const auth_2 = require("./middleware/auth");
 const rateLimit_1 = require("./config/rateLimit");
 (0, errorHandler_1.setupGlobalErrorHandlers)();
@@ -155,6 +156,8 @@ app.use('/webhooks', express_1.default.json({
     }
 }), metaWebhook_1.default);
 console.log('[WEBHOOKS] Meta webhook routes mounted at /webhooks/*');
+app.use('/api/payments/razorpay/webhook', payments_razorpay_routes_1.default);
+console.log('[PAYMENTS] Razorpay webhook route mounted with raw body parsing');
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 const allowedOrigins = [
@@ -346,6 +349,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEBUG_ROUTES ===
 }
 app.use('/api/whatsapp', rateLimit_1.writeLimiter, whatsapp_1.default);
 app.use('/api/send', rateLimit_1.writeLimiter, send_1.default);
+app.use('/api/payments/razorpay', rateLimit_1.writeLimiter, payments_razorpay_routes_1.default);
 app.use('/api', sseRoutes_1.default);
 app.get('/api', (req, res) => {
     res.json({
