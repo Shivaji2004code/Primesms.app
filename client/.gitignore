@@ -22,3 +22,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Certificate and SSL files (SECURITY CRITICAL)
+*.crt
+*.cert
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.der
+*.csr
+*.srl
+
+# Environment files
+.env*

@@ -37,5 +37,26 @@ Thumbs.db
 # PM2
 .pm2/
 
+# Certificate and SSL files (SECURITY CRITICAL)
+*.crt
+*.cert
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.der
+*.csr
+*.srl
+ssl/
+certs/
+certificates/
+
+# Private keys and certificates
+privkey.pem
+cert.pem
+chain.pem
+fullchain.pem
+
 # Keep client-build for Docker deployment
 # client-build/

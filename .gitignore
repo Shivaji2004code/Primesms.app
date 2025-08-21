@@ -1,0 +1,171 @@
+# ============================================================================
+# PRIME SMS - GITIGNORE FOR PRODUCTION DEPLOYMENT
+# ============================================================================
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+dist-ssr/
+client/dist/
+server/dist/
+
+# Environment files (.env files contain sensitive data)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# Certificate and SSL files (SECURITY CRITICAL)
+*.crt
+*.cert
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.der
+*.csr
+*.srl
+ssl/
+certs/
+certificates/
+
+# Private keys and certificates
+*.key
+*_key
+*_key.*
+privkey.pem
+cert.pem
+chain.pem
+fullchain.pem
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+database.sql
+*.dump
+
+# Logs and runtime files
+logs/
+*.log
+*.log.*
+server.log
+client.log
+client_dev.log
+
+# Session and cache files
+session*
+cookies.txt
+test_cookies.txt
+admin_session.txt
+template_test_session.txt
+
+# Backup and temporary files
+*.bak
+*.backup
+*.tmp
+*.temp
+*~
+.cache/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Upload directories (may contain user data)
+uploads/*
+!uploads/.gitkeep
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Process managers
+.pm2/
+ecosystem.config.js.backup
+
+# Docker and containerization
+.dockerignore.backup
+docker-compose.override.yml
+
+# Testing
+coverage/
+.nyc_output/
+test-results/
+
+# Coolify deployment files (may contain secrets)
+coolify.override.json
+.coolify/
+
+# WhatsApp API secrets and tokens
+webhook_verification_token.txt
+access_token.txt
+app_secret.txt
+
+# Build artifacts that should be generated during deployment
+client-build/
+server/client-build/
+
+# Local development files
+*.local
+.env.development
+
+# Temporary files from installations or builds
+.vite-temp/
+.next/
+.turbo/
+
+# Security scanning results
+security-report.*
+vulnerability-report.*
+
+# Local configuration overrides
+config.local.*
+settings.local.*
+
+# Git conflict markers and patches
+*.orig
+*.rej
+*.patch
+
+# Package manager lock files (keep one, ignore others)
+# Keeping package-lock.json, ignoring others
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# Analytics and tracking (may contain sensitive data)
+analytics.json
+tracking.json
+user-data.json
+
+# Backup database dumps
+*.sql.gz
+*.sql.bak
+migration_backup_*.sql
+
+# Development tools
+.eslintcache
+.stylelintcache
