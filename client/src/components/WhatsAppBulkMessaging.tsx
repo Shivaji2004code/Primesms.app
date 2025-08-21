@@ -379,8 +379,8 @@ export default function WhatsAppBulkMessaging() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    const allowedExtensions = ['.txt', '.csv', '.xlsx', '.xls'];
+    // Validate file type - Only CSV and Excel files
+    const allowedExtensions = ['.csv', '.xlsx', '.xls'];
     const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
     
     if (!allowedExtensions.includes(fileExtension)) {
@@ -388,7 +388,7 @@ export default function WhatsAppBulkMessaging() {
         show: true,
         type: 'error',
         title: 'Invalid file type',
-        message: `Please upload a supported file type: ${allowedExtensions.join(', ')}`
+        message: `Only CSV and Excel files are supported. Please upload: ${allowedExtensions.join(', ')}`
       });
       return;
     }
@@ -405,25 +405,30 @@ export default function WhatsAppBulkMessaging() {
       return;
     }
 
-    // For Excel files in Quick-Send: automatically import from first column only
-    if (fileExtension === '.xlsx' || fileExtension === '.xls') {
-      try {
-        console.log('Importing Excel file for Quick-Send (first column only):', file.name);
-        
-        // Quick-Send: Import directly from first column, no column selection needed
+    // Show loading state while processing
+    setAlertState({
+      show: true,
+      type: 'info',
+      title: 'Processing file...',
+      message: 'Please wait while we import your phone numbers.'
+    });
+
+    try {
+      if (fileExtension === '.xlsx' || fileExtension === '.xls') {
+        console.log('Importing Excel file:', file.name);
         await importRecipientsFromFile(file);
-      } catch (error) {
-        console.error('Error importing Excel file:', error);
-        setAlertState({
-          show: true,
-          type: 'error',
-          title: 'Import failed',
-          message: error instanceof Error ? error.message : 'Please check your Excel file format'
-        });
+      } else if (fileExtension === '.csv') {
+        console.log('Importing CSV file:', file.name);
+        await importRecipientsFromFile(file); // Use server-side import for CSV too
       }
-    } else {
-      // For CSV/TXT files, use simple client-side import
-      handleSimpleFileImport(file);
+    } catch (error) {
+      console.error('Error importing file:', error);
+      setAlertState({
+        show: true,
+        type: 'error',
+        title: 'Import failed',
+        message: error instanceof Error ? error.message : 'Please check your file format and try again'
+      });
     }
     
     // Reset the file input
@@ -451,6 +456,9 @@ export default function WhatsAppBulkMessaging() {
         // Handle the nested data structure from backend
         const data = result.data || result;
         
+        // Clear the processing alert
+        setAlertState(null);
+        
         if (data.valid_numbers && data.valid_numbers.length > 0) {
           // Put numbers in manual entry field line by line
           const numbersText = data.valid_numbers.join('\n');
@@ -460,22 +468,22 @@ export default function WhatsAppBulkMessaging() {
           // Auto-parse recipients immediately after setting the text
           parseRecipientsFromText(numbersText);
           
-          // Numbers will automatically appear in the manual input field
-          
-          // Show parsing success modal instead of alert
-          setFileParsingModal({
-            show: true,
-            title: 'File Parsed Successfully!',
-            message: `Numbers imported from first column and ready to send`,
-            parsedCount: data.valid_count,
-            invalidCount: data.invalid_count || 0
-          });
+          // Show animated parsing success modal
+          setTimeout(() => {
+            setFileParsingModal({
+              show: true,
+              title: '🎉 File Imported Successfully!',
+              message: `Your phone numbers have been imported and are ready to use`,
+              parsedCount: data.valid_count,
+              invalidCount: data.invalid_count || 0
+            });
+          }, 500); // Small delay for better UX
         } else {
           setAlertState({
             show: true,
             type: 'warning',
             title: 'No valid numbers found',
-            message: 'Please check your file format. Excel files should have phone numbers in the first column.'
+            message: 'Please check your file format. Make sure phone numbers are in the first column with country codes (e.g., 919876543210).'
           });
         }
       } else {
@@ -488,7 +496,7 @@ export default function WhatsAppBulkMessaging() {
         show: true,
         type: 'error',
         title: 'Import failed',
-        message: error instanceof Error ? error.message : 'Please check your file format and try again'
+        message: error instanceof Error ? error.message : 'Please check your file format and try again. Make sure the file contains phone numbers in the first column.'
       });
     }
   };
@@ -1135,7 +1143,7 @@ export default function WhatsAppBulkMessaging() {
                       <Target className="h-5 w-5 mr-2 text-emerald-600" />
                       Campaign Details
                     </CardTitle>
-                    <CardDescription>Set campaign name and recipient list</CardDescription>
+        <CardDescription>Set campaign name and import your phone numbers</CardDescription>
                   </div>
                 </div>
                 {getStepStatus(2) === 'completed' && (
@@ -1159,61 +1167,118 @@ export default function WhatsAppBulkMessaging() {
               </div>
 
               {/* File Upload and Manual Entry Section */}
-              <div className="space-y-4">
-                {/* File Upload Button */}
-                <div className="flex items-center justify-between mb-4">
-                  <Label className="text-sm font-medium">Import Phone Numbers</Label>
-                  <div className="flex items-center gap-3">
+              <div className="space-y-6">
+                {/* Beautiful File Upload Section */}
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Upload className="h-4 w-4 text-emerald-600" />
+                    Import Phone Numbers
+                  </Label>
+                  
+                  {/* Attractive File Upload Area */}
+                  <div className="relative">
                     <input
                       type="file"
-                      accept=".txt,.csv,.xlsx,.xls"
+                      accept=".csv,.xlsx,.xls"
                       onChange={handleFileUpload}
-                      className="hidden"
-                      id="file-upload-button"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      id="file-upload-input"
                     />
-                    <label htmlFor="file-upload-button" className="cursor-pointer">
+                    <div className="border-2 border-dashed border-emerald-300 rounded-xl p-8 bg-gradient-to-br from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 transition-all duration-300 text-center group hover:border-emerald-400">
+                      <div className="flex flex-col items-center space-y-4">
+                        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
+                          <Upload className="h-8 w-8 text-emerald-600" />
+                        </div>
+                        <div className="space-y-2">
+                          <h3 className="text-lg font-semibold text-gray-900">Upload your file</h3>
+                          <p className="text-sm text-gray-600">Drop your CSV or Excel file here, or click to browse</p>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                            <FileText className="h-3 w-3 mr-1" />
+                            CSV Files
+                          </Badge>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <FileText className="h-3 w-3 mr-1" />
+                            Excel Files
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Supported formats: .csv, .xlsx, .xls • Max size: 10MB
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Alternative Upload Button */}
+                  <div className="flex justify-center">
+                    <label htmlFor="file-upload-input" className="cursor-pointer">
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
-                        className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                        className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 shadow-sm"
                         asChild
                       >
                         <span>
                           <Upload className="h-4 w-4 mr-2" />
-                          Upload File
+                          Choose File to Upload
                         </span>
                       </Button>
                     </label>
-                    <span className="text-xs text-gray-500">.txt, .csv, .xlsx, .xls</span>
                   </div>
                 </div>
 
-                {/* Manual Entry Field */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <Label htmlFor="manual-recipients" className="text-sm font-medium">Phone Numbers *</Label>
+                {/* Enhanced Manual Entry Field */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="manual-recipients" className="text-sm font-medium flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-emerald-600" />
+                      Phone Numbers *
+                    </Label>
                     {recipients.length > 0 && (
-                      <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
                         {recipients.length} numbers detected
                       </Badge>
                     )}
                   </div>
-                  <Textarea
-                    id="manual-recipients"
-                    value={manualRecipients}
-                    onChange={(e) => handleManualRecipientsChange(e.target.value)}
-                    placeholder="Type or paste phone numbers here:&#10;919876543210&#10;918765432109&#10;917654321098&#10;...&#10;&#10;Numbers are processed automatically as you type or upload files!"
-                    className="mt-1"
-                    rows={6}
-                  />
-                  <div className="flex items-center justify-between mt-2">
-                    <p className="text-xs text-emerald-600 font-medium">
-                      ⚡ Auto-processing: Numbers are detected as you type or upload files!
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Include country code (91, 1, etc.) • One per line or comma separated
-                    </p>
+                  
+                  <div className="relative">
+                    <Textarea
+                      id="manual-recipients"
+                      value={manualRecipients}
+                      onChange={(e) => handleManualRecipientsChange(e.target.value)}
+                      placeholder="Type or paste phone numbers here:\n\n919876543210\n918765432109\n917654321098\n\n📝 Tip: Numbers are automatically detected as you type!\n🔄 You can also upload CSV/Excel files above."
+                      className="mt-1 min-h-[120px] bg-gray-50 border-gray-300 focus:bg-white transition-colors resize-none"
+                      rows={8}
+                    />
+                    {/* Live indicator */}
+                    {manualRecipients && (
+                      <div className="absolute top-3 right-3">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Sparkles className="h-3 w-3 text-emerald-600" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium text-emerald-800">
+                          ⚡ Auto-Processing Active
+                        </p>
+                        <p className="text-xs text-emerald-700">
+                          Numbers are automatically detected and validated as you type or upload files!
+                        </p>
+                        <div className="text-xs text-emerald-600 mt-2 space-y-1">
+                          <div>• Include country code (91 for India, 1 for US, etc.)</div>
+                          <div>• Use one number per line or separate with commas</div>
+                          <div>• Upload CSV/Excel files for bulk import</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
