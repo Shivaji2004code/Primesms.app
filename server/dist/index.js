@@ -223,7 +223,33 @@ app.use('/api', (req, res) => {
 app.get('/templates', auth_2.requireAuthWithRedirect, (req, res) => {
     res.redirect('/api/templates');
 });
-const clientDir = path_1.default.resolve(__dirname, './client-static');
+const clientStaticDir = path_1.default.resolve(__dirname, './client-static');
+const clientBuildDir = path_1.default.resolve(__dirname, '../client-build');
+let clientDir;
+try {
+    const fs = require('fs');
+    if (fs.existsSync(clientStaticDir)) {
+        clientDir = clientStaticDir;
+        logger_1.logger.info(`Using client directory: ${clientDir}`);
+    }
+    else if (fs.existsSync(clientBuildDir)) {
+        clientDir = clientBuildDir;
+        logger_1.logger.info(`Using client directory: ${clientDir} (fallback to client-build)`);
+    }
+    else {
+        throw new Error(`Neither ${clientStaticDir} nor ${clientBuildDir} exists`);
+    }
+}
+catch (error) {
+    logger_1.logger.error(`Error determining client directory: ${error}`);
+    clientDir = clientStaticDir;
+}
+app.use((req, res, next) => {
+    if (req.path.startsWith('/assets') || req.path.includes('.js') || req.path.includes('.css')) {
+        logger_1.logger.info(`Asset request: ${req.method} ${req.path}`);
+    }
+    next();
+});
 app.use('/assets', express_1.default.static(path_1.default.join(clientDir, 'assets'), {
     maxAge: '1y',
     immutable: true,
@@ -276,10 +302,6 @@ app.use(express_1.default.static(clientDir, {
         }
     }
 }));
-app.use((req, res, next) => {
-    logger_1.logger.info(`Request: ${req.method} ${req.path} - User-Agent: ${req.get('User-Agent')?.substring(0, 50)}...`);
-    next();
-});
 app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') ||
         req.path.startsWith('/health') ||
