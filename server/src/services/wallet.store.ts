@@ -71,7 +71,7 @@ class InMemoryWalletStore implements WalletStore {
   ): Promise<void> {
     try {
       logger.info(`💰 🔄 WALLET CREDIT START: userId=${userId}, amount=${amountCredits}, ref=${ref}, description="${description}"`);
-      logger.info(`💰 📋 CREDIT METHOD: Attempting credit system first, then fallback to direct DB`);
+      logger.info(`💰 📋 CREDIT METHOD: Using reliable direct DB method (same as admin)`);
       
       // Log current balance before any credit operations
       const preCheckResult = await pool.query(
@@ -81,104 +81,59 @@ class InMemoryWalletStore implements WalletStore {
       const currentBal = preCheckResult.rows[0]?.credit_balance || 0;
       logger.info(`💰 📊 WALLET STORE PRE-CHECK: User ${userId} current balance: ₹${currentBal}`);
       
-      // Try using the existing credit system first
-      try {
-        logger.info(`💰 🔧 STEP 1: Attempting credit via addCredits() function...`);
-        const result = await addCredits({
-          userId,
-          amount: amountCredits,
-          transactionType: CreditTransactionType.ADMIN_ADD,
-          description: description || `Wallet top-up via Razorpay (${ref})`
-        });
-        
-        logger.info(`💰 📊 STEP 1 RESULT:`, {
-          success: result.success,
-          newBalance: result.newBalance,
-          transactionId: result.transactionId
-        });
-        
-        if (result.success) {
-          logger.info(`💰 ✅ STEP 1 SUCCESS: Credit system worked! User ${userId} new balance: ${result.newBalance}, Transaction ID: ${result.transactionId}`);
-          return;
-        } else {
-          logger.warn(`💰 ⚠️ STEP 1 FAILED: Credit system returned success=false, trying direct database update`);
-        }
-      } catch (creditSystemError) {
-        logger.error(`💰 ❌ STEP 1 ERROR: Credit system failed:`, {
-          error: creditSystemError instanceof Error ? creditSystemError.message : String(creditSystemError),
-          stack: creditSystemError instanceof Error ? creditSystemError.stack : undefined
-        });
-        logger.info(`💰 🔄 STEP 2: Attempting direct database credit update as fallback`);
-      }
+      // Use the same reliable method as admin credit addition
+      logger.info(`💰 🔧 Starting direct database credit update (admin method)...`);
       
-      // Fallback: Direct database update
-      logger.info(`💰 🔧 STEP 2: Starting direct database credit update...`);
-      const client = await pool.connect();
+      // Start transaction
+      await pool.query('BEGIN');
+
       try {
-        logger.info(`💰 🔧 STEP 2.1: Beginning database transaction...`);
-        await client.query('BEGIN');
-        
-        // Get current balance
-        logger.info(`💰 🔧 STEP 2.2: Fetching current balance for user ${userId}...`);
-        const balanceResult = await client.query(
-          'SELECT credit_balance FROM users WHERE id = $1 FOR UPDATE',
+        // Get current balance and properly handle decimal precision (same as admin)
+        const currentBalanceResult = await pool.query(
+          'SELECT credit_balance FROM users WHERE id = $1',
           [userId]
         );
-        
-        if (balanceResult.rows.length === 0) {
+
+        if (currentBalanceResult.rows.length === 0) {
           throw new Error(`User ${userId} not found`);
         }
+
+        const currentBalance = parseFloat(currentBalanceResult.rows[0].credit_balance);
+        const amountToAdd = parseFloat(amountCredits.toString());
         
-        const currentBalance = parseFloat(balanceResult.rows[0].credit_balance || '0');
-        const newBalance = Math.round((currentBalance + amountCredits) * 100) / 100;
-        
-        logger.info(`💰 📊 STEP 2.3: Balance calculation: User ${userId} current=${currentBalance} + add=${amountCredits} = new=${newBalance}`);
-        
-        // Update user balance
-        logger.info(`💰 🔧 STEP 2.4: Updating user balance to ${newBalance}...`);
-        const updateResult = await client.query(
-          'UPDATE users SET credit_balance = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        // Properly calculate new balance with decimal precision (same as admin)
+        const newBalance = Math.round((currentBalance + amountToAdd) * 100) / 100;
+
+        logger.info(`💰 📊 Balance calculation: User ${userId} current=${currentBalance} + add=${amountToAdd} = new=${newBalance}`);
+
+        // Update user balance with properly calculated value (same as admin)
+        const updateResult = await pool.query(
+          'UPDATE users SET credit_balance = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING credit_balance',
           [newBalance, userId]
         );
+
+        logger.info(`💰 📊 Updated ${updateResult.rowCount} rows, new balance: ${updateResult.rows[0]?.credit_balance}`);
+
+        // Add transaction record (positive amount for addition - same as admin)
+        const logResult = await pool.query(
+          `INSERT INTO credit_transactions (user_id, amount, transaction_type, description) 
+           VALUES ($1, $2, 'ADMIN_ADD', $3) RETURNING id`,
+          [userId, amountToAdd, description || `Wallet top-up via Razorpay (${ref})`]
+        );
+
+        logger.info(`💰 📊 Transaction logged with ID ${logResult.rows[0]?.id}`);
+
+        await pool.query('COMMIT');
         
-        logger.info(`💰 📊 STEP 2.4 RESULT: Updated ${updateResult.rowCount} rows`);
+        logger.info(`💰 ✅ SUCCESS: Credit addition complete! User ${userId} new balance: ${newBalance}`);
         
-        // Insert transaction log (try, but don't fail if table doesn't exist)
-        try {
-          logger.info(`💰 🔧 STEP 2.5: Inserting transaction log...`);
-          const logResult = await client.query(
-            `INSERT INTO credit_transactions 
-             (user_id, amount, transaction_type, description, created_at)
-             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-             RETURNING id`,
-            [userId, amountCredits, 'ADMIN_ADD', description || `Wallet top-up via Razorpay (${ref})`]
-          );
-          logger.info(`💰 📊 STEP 2.5 RESULT: Transaction logged with ID ${logResult.rows[0]?.id}`);
-        } catch (transactionLogError) {
-          logger.warn(`💰 ⚠️ STEP 2.5 WARNING: Failed to log transaction, but continuing:`, {
-            error: transactionLogError instanceof Error ? transactionLogError.message : String(transactionLogError)
-          });
-        }
-        
-        logger.info(`💰 🔧 STEP 2.6: Committing transaction...`);
-        await client.query('COMMIT');
-        
-        logger.info(`💰 ✅ STEP 2 SUCCESS: Direct DB credit complete! User ${userId} new balance: ${newBalance}`);
-        
-      } catch (dbError) {
-        logger.error(`💰 ❌ STEP 2 ERROR: Database error, rolling back:`, {
-          error: dbError instanceof Error ? dbError.message : String(dbError),
-          stack: dbError instanceof Error ? dbError.stack : undefined
-        });
-        await client.query('ROLLBACK');
-        throw dbError;
-      } finally {
-        logger.info(`💰 🔧 STEP 2.7: Releasing database connection...`);
-        client.release();
+      } catch (error) {
+        await pool.query('ROLLBACK');
+        throw error;
       }
       
     } catch (error) {
-      logger.error(`💰 ❌ All credit methods failed for user ${userId}:`, error);
+      logger.error(`💰 ❌ Credit addition failed for user ${userId}:`, error);
       throw error;
     }
   }
