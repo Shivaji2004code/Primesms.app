@@ -78,7 +78,7 @@ const uploadMediaForTemplate = async (
   
   try {
     const response = await axios.post(
-      `https://waba.360dialog.io/v1/media`,
+      `https://waba-v2.360dialog.io/media`,
       form,
       { 
         headers: { 
@@ -129,12 +129,12 @@ const uploadMediaToWhatsApp = async (
   formData.append('messaging_product', 'whatsapp');
 
   console.log(`   - FormData prepared with file stream`);
-  console.log(`   - Sending to: https://waba-v2.360dialog.io/v1/media`);
+  console.log(`   - Sending to: https://waba-v2.360dialog.io/media`);
 
   try {
     // Upload to 360dialog Media API using axios
     const uploadResponse = await axios.post(
-      `https://waba.360dialog.io/v1/media`,
+      `https://waba-v2.360dialog.io/media`,
       formData,
       {
         headers: {
@@ -591,6 +591,60 @@ router.get('/', async (req, res) => {
     const status = req.query.status as string;
     const category = req.query.category as string;
     const language = req.query.language as string;
+
+    // Auto-sync from 360dialog if user has 360dialog configured (background operation)
+    try {
+      const creds = await resolve360DialogCredentials(userId);
+      if (creds?.apiKey) {
+        console.log(`🔄 [AUTO-SYNC] Triggering background 360dialog sync for user ${userId}`);
+        // Import the sync function
+        const { fetchAllTemplatesFrom360Dialog, normalize360DialogStatus } = require('../services/wa360Templates');
+        const { templatesRepo } = require('../repos/templatesRepo');
+        const { sseHub } = require('../services/sseBroadcaster');
+        
+        // Background sync - don't await, don't block the response
+        setImmediate(async () => {
+          try {
+            const allTemplates = await fetchAllTemplatesFrom360Dialog(creds.apiKey);
+            console.log(`📋 [AUTO-SYNC] Processing ${allTemplates.length} templates from 360dialog`);
+            
+            for (const templateData of allTemplates) {
+              try {
+                await templatesRepo.upsertStatusAndCategory({
+                  userId,
+                  name: templateData.name,
+                  language: templateData.language,
+                  status: normalize360DialogStatus(templateData.status || 'UNKNOWN'),
+                  category: templateData.category,
+                  reason: templateData.reason || null,
+                  reviewedAt: templateData.updated_at ? new Date(templateData.updated_at) : new Date()
+                });
+
+                // Emit SSE event for each updated template
+                sseHub.emitTemplate(userId, {
+                  type: 'template_update',
+                  name: templateData.name,
+                  language: templateData.language,
+                  status: normalize360DialogStatus(templateData.status || 'UNKNOWN'),
+                  category: templateData.category || null,
+                  reason: templateData.reason || null,
+                  at: new Date().toISOString(),
+                  source: '360dialog_auto_sync'
+                });
+              } catch (error) {
+                console.error(`❌ [AUTO-SYNC] Error processing template ${templateData.name}:`, error);
+              }
+            }
+            console.log(`✅ [AUTO-SYNC] Completed background sync for user ${userId}`);
+          } catch (error) {
+            console.error(`❌ [AUTO-SYNC] Background sync failed for user ${userId}:`, error);
+          }
+        });
+      }
+    } catch (syncError) {
+      // Ignore sync errors, continue with regular template listing
+      console.log(`⚠️ [AUTO-SYNC] Background sync not available for user ${userId}: ${syncError.message}`);
+    }
 
     // Build the WHERE clause
     let whereClause = 'WHERE user_id = $1';
