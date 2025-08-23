@@ -89,9 +89,21 @@ const uploadMediaForTemplate = async (
     );
     
     console.log('✅ Regular media upload successful!');
-    console.log('📋 Media ID:', response.data.id);
+    console.log('🔍 [MEDIA-UPLOAD] Raw response:', JSON.stringify(response.data, null, 2));
     
-    return response.data.id;
+    // Extract media ID from 360dialog response format
+    let mediaId;
+    if (response.data?.media && Array.isArray(response.data.media) && response.data.media[0]?.id) {
+      mediaId = response.data.media[0].id;
+    } else if (response.data?.id) {
+      mediaId = response.data.id;
+    } else {
+      console.error('❌ Unexpected media upload response format:', response.data);
+      throw new Error('Invalid media upload response format');
+    }
+    
+    console.log('📋 Media ID:', mediaId);
+    return mediaId;
   } catch (error: any) {
     console.error('❌ All media upload approaches failed!');
     console.error('❌ Error:', error.response?.data || error.message);
@@ -147,9 +159,20 @@ const uploadMediaToWhatsApp = async (
     console.log(`📥 WhatsApp Media API response status: ${uploadResponse.status}`);
     console.log(`📥 WhatsApp Media API response:`, JSON.stringify(uploadResponse.data, null, 2));
     
-    console.log(`✅ Media uploaded successfully, ID: ${uploadResponse.data.id}`);
+    // Extract media ID from 360dialog response format
+    let mediaId;
+    if (uploadResponse.data?.media && Array.isArray(uploadResponse.data.media) && uploadResponse.data.media[0]?.id) {
+      mediaId = uploadResponse.data.media[0].id;
+    } else if (uploadResponse.data?.id) {
+      mediaId = uploadResponse.data.id;
+    } else {
+      console.error('❌ Unexpected media upload response format:', uploadResponse.data);
+      throw new Error('Invalid media upload response format');
+    }
+    
+    console.log(`✅ Media uploaded successfully, ID: ${mediaId}`);
     // Return the media ID for template creation
-    return uploadResponse.data.id;
+    return mediaId;
   } catch (error: any) {
     console.error(`❌ Media upload failed:`, error.response?.data || error.message);
     throw new Error(`Media upload error: ${error.response?.data?.error?.message || error.message}`);
@@ -265,19 +288,14 @@ const createWhatsAppTemplate = async (
           throw new Error(`Invalid media ID for ${component.format} template: "${mediaId}"`);
         }
         
-        // Return 360dialog format based on media type
+        // Return 360dialog format with header_handle in example field (correct format for 2025)
         const result: any = {
           type: 'HEADER',
-          format: component.format
+          format: component.format,
+          example: {
+            header_handle: [mediaId]
+          }
         };
-        
-        if (component.format === 'IMAGE') {
-          result.image = { id: mediaId };
-        } else if (component.format === 'VIDEO') {
-          result.video = { id: mediaId };
-        } else if (component.format === 'DOCUMENT') {
-          result.document = { id: mediaId };
-        }
         
         return result;
       }
@@ -394,25 +412,31 @@ const createWhatsAppTemplate = async (
     console.log('📎 UTILITY template: All components allowed');
   }
 
-  // Get namespace for 360dialog (required for template creation)
-  let namespace: string;
+  // Try to get namespace for 360dialog (optional for some accounts)
+  let namespace: string | undefined;
   try {
     namespace = await getNamespace(businessInfo.wabaId!, businessInfo.accessToken!);
   } catch (error) {
-    console.error('❌ Failed to get namespace, using fallback');
-    // Use a fallback or throw error - namespace is required for 360dialog
-    throw new Error('Namespace is required for 360dialog template creation');
+    console.log('⚠️ Namespace not available, proceeding without it (some 360dialog accounts auto-determine namespace)');
+    namespace = undefined;
   }
 
-  // Build payload with required namespace for 360dialog
+  // Build payload - include namespace only if available
   const payload: any = {
     name: templateData.name,
     language: templateData.language || 'en_US',
     category: templateData.category,
     components: processedComponents,
-    namespace: namespace,
     allow_category_change: templateData.allow_category_change ?? true
   };
+
+  // Add namespace only if we got one
+  if (namespace) {
+    payload.namespace = namespace;
+    console.log(`✅ Using namespace: ${namespace}`);
+  } else {
+    console.log(`⚠️ No namespace provided - letting 360dialog auto-determine`);
+  }
 
   // Add authentication-specific fields
   if (templateData.category === 'AUTHENTICATION') {
@@ -569,27 +593,47 @@ const getTemplateStatus = async (templateId: string, accessToken: string): Promi
   }
 };
 
-// Get namespace helper
+// Get namespace helper - try multiple endpoints for 360dialog
 const getNamespace = async (wabaId: string, accessToken: string): Promise<string> => {
   console.log(`🔍 Getting namespace for 360dialog channel: ${wabaId}`);
   
-  try {
-    const response = await axios.get(
-      `https://waba-v2.360dialog.io/v1/configs/about`,
-      {
+  const endpoints = [
+    `https://waba-v2.360dialog.io/v1/configs/about`,
+    `https://waba-v2.360dialog.io/v1/configs/application/settings`,
+    `https://waba-v2.360dialog.io/v1/configs/business-profile`,
+  ];
+  
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`🔍 Trying endpoint: ${endpoint}`);
+      const response = await axios.get(endpoint, {
         headers: {
           'D360-API-KEY': accessToken
         }
+      });
+      
+      console.log(`📥 Response from ${endpoint}:`, JSON.stringify(response.data, null, 2));
+      
+      // Try different possible field names for namespace
+      const namespace = response.data.message_template_namespace || 
+                       response.data.namespace ||
+                       response.data.waba_namespace ||
+                       response.data.business?.namespace ||
+                       response.data.data?.namespace;
+      
+      if (namespace) {
+        console.log(`✅ Got namespace from ${endpoint}: ${namespace}`);
+        return namespace;
       }
-    );
-
-    const namespace = response.data.message_template_namespace;
-    console.log(`✅ Got namespace: ${namespace}`);
-    return namespace;
-  } catch (error: any) {
-    console.error('❌ Failed to get namespace:', error.response?.data || error.message);
-    throw new Error(`Failed to get namespace: ${error.response?.data?.error?.message || error.message}`);
+    } catch (error: any) {
+      console.log(`⚠️ Endpoint ${endpoint} failed:`, error.response?.data?.error || error.message);
+      continue;
+    }
   }
+  
+  // If all endpoints fail, use a default namespace format or return error
+  console.error('❌ All namespace endpoints failed');
+  throw new Error('Unable to retrieve namespace from 360dialog API. Namespace is required for template creation.');
 };
 
 // Get all templates for the authenticated user
