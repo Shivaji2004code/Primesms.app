@@ -24,6 +24,8 @@ const admin_1 = __importDefault(require("./routes/admin"));
 const templates_1 = __importDefault(require("./routes/templates"));
 const whatsapp_1 = __importDefault(require("./routes/whatsapp"));
 const send_1 = __importDefault(require("./routes/send"));
+const send360dialog_1 = __importDefault(require("./routes/send360dialog"));
+const bulk360dialog_1 = __importDefault(require("./routes/bulk360dialog"));
 const credits_1 = __importDefault(require("./routes/credits"));
 const logs_1 = __importDefault(require("./routes/logs"));
 const metaWebhook_1 = __importDefault(require("./routes/metaWebhook"));
@@ -356,6 +358,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEBUG_ROUTES ===
 }
 app.use('/api/whatsapp', rateLimit_1.writeLimiter, whatsapp_1.default);
 app.use('/api/send', rateLimit_1.writeLimiter, send_1.default);
+app.use('/api/send360dialog', rateLimit_1.writeLimiter, send360dialog_1.default);
+app.use('/api/bulk360dialog', rateLimit_1.writeLimiter, bulk360dialog_1.default);
 app.use('/api/payments/razorpay', rateLimit_1.writeLimiter, payments_razorpay_routes_1.default);
 app.use('/api', sseRoutes_1.default);
 app.get('/api', (req, res) => {

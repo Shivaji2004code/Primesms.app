@@ -31,6 +31,8 @@ import adminRoutes from './routes/admin';
 import templateRoutes from './routes/templates';
 import whatsappRoutes from './routes/whatsapp';
 import sendRoutes from './routes/send';
+import send360dialogRoutes from './routes/send360dialog';
+import bulk360dialogRoutes from './routes/bulk360dialog';
 import creditsRoutes from './routes/credits';
 import logsRoutes from './routes/logs';
 import metaWebhookRouter from './routes/metaWebhook';
@@ -524,6 +526,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEBUG_ROUTES ===
 // Write-heavy routes (reasonable limits for messaging operations)
 app.use('/api/whatsapp', writeLimiter, whatsappRoutes);
 app.use('/api/send', writeLimiter, sendRoutes);
+app.use('/api/send360dialog', writeLimiter, send360dialogRoutes);
+app.use('/api/bulk360dialog', writeLimiter, bulk360dialogRoutes);
 
 // Payment routes (moderate limits for financial operations)
 app.use('/api/payments/razorpay', writeLimiter, paymentsRazorpayRoutes);
