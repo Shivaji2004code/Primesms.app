@@ -33,6 +33,7 @@ const webhook360dialog_1 = __importDefault(require("./routes/webhook360dialog"))
 const whatsapp360dialog_1 = __importDefault(require("./routes/whatsapp360dialog"));
 const sseRoutes_1 = __importDefault(require("./routes/sseRoutes"));
 const templatesSync_1 = __importDefault(require("./routes/templatesSync"));
+const templatesSync360Dialog_1 = __importDefault(require("./routes/templatesSync360Dialog"));
 const templatesDebug_1 = __importDefault(require("./routes/templatesDebug"));
 const templatesSyncDirect_1 = __importDefault(require("./routes/templatesSyncDirect"));
 const payments_razorpay_routes_1 = __importDefault(require("./routes/payments.razorpay.routes"));
@@ -351,6 +352,7 @@ app.use('/api/templates', rateLimit_1.readLimiter, templates_1.default);
 app.use('/api/logs', rateLimit_1.readLimiter, logs_1.default);
 app.use('/api/credits', rateLimit_1.readLimiter, credits_1.default);
 app.use('/', rateLimit_1.writeLimiter, templatesSync_1.default);
+app.use('/', rateLimit_1.writeLimiter, templatesSync360Dialog_1.default);
 app.use('/', rateLimit_1.writeLimiter, templatesSyncDirect_1.default);
 if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEBUG_ROUTES === 'true') {
     app.use('/', rateLimit_1.noLimiter, templatesDebug_1.default);

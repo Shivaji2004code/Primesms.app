@@ -195,8 +195,8 @@ export declare const messageSchemas: {
             variables?: Record<string, string> | undefined;
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
-        language: string;
         templateName: string;
+        language: string;
         recipients: {
             number: string;
             variables?: Record<string, string> | undefined;
@@ -217,8 +217,8 @@ export declare const messageSchemas: {
         phoneNumberId: z.ZodString;
         variableMapping: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
-        language: string;
         templateName: string;
+        language: string;
         phoneNumberId: string;
         variableMapping?: string | undefined;
     }, {

@@ -103,6 +103,15 @@ export interface TemplateComponent {
     media?: {
         id: string;
     };
+    image?: {
+        id: string;
+    };
+    video?: {
+        id: string;
+    };
+    document?: {
+        id: string;
+    };
 }
 export interface Template {
     id: string;

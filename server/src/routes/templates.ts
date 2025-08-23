@@ -301,7 +301,7 @@ const createWhatsAppTemplate = async (
   
   // MARKETING: Allow all components like UTILITY
   else if (templateData.category === 'MARKETING') {
-    processedComponents = templateData.components.map(component => {
+    processedComponents = await Promise.all(templateData.components.map(async (component) => {
       // Handle MEDIA headers (IMAGE, VIDEO, DOCUMENT)
       if (component.type === 'HEADER' && component.format && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(component.format)) {
         let mediaId = '';
@@ -375,7 +375,7 @@ const createWhatsAppTemplate = async (
       }
       
       return component;
-    });
+    }));
     
     console.log('📢 MARKETING template: All components allowed');
   }

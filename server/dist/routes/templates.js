@@ -11,6 +11,7 @@ const axios_1 = __importDefault(require("axios"));
 const db_1 = __importDefault(require("../db"));
 const auth_1 = require("../middleware/auth");
 const templateSanitizer_1 = require("../utils/templateSanitizer");
+const _360dialogCredentials_1 = require("../utils/360dialogCredentials");
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
         const uploadDir = path_1.default.join(__dirname, '../../uploads');
@@ -42,77 +43,41 @@ const router = express_1.default.Router();
 router.use(auth_1.requireAuth);
 router.use(templateSanitizer_1.sanitizeTemplateResponse);
 const uploadMediaForTemplate = async (phoneNumberId, filePath, accessToken, mimeType = 'image/jpeg') => {
-    console.log('\n🚀 UPLOADING MEDIA FOR TEMPLATE CREATION (BUSINESS MANAGER APPROACH)');
+    console.log('\n🚀 UPLOADING MEDIA FOR TEMPLATE CREATION (360DIALOG)');
+    ;
     console.log('=================================================================');
-    console.log(`📱 Phone Number ID: ${phoneNumberId}`);
+    console.log(`📱 Channel ID: ${phoneNumberId}`);
     console.log(`📁 File Path: ${filePath}`);
-    console.log(`🔑 Token: ${accessToken.substring(0, 20)}...`);
+    console.log(`🔑 API Key: ${accessToken.substring(0, 20)}...`);
     console.log(`📎 MIME Type: ${mimeType}`);
-    try {
-        console.log('🔍 Step 1: Getting Business Manager ID from access token...');
-        const debugResponse = await axios_1.default.get(`https://graph.facebook.com/v21.0/debug_token?input_token=${accessToken}`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
-        console.log('🔍 Debug token response:', JSON.stringify(debugResponse.data, null, 2));
-        const appId = debugResponse.data?.data?.app_id;
-        console.log('📱 App ID found:', appId);
-        if (appId) {
-            console.log('📤 Step 2: Trying Business Manager upload approach...');
-            const fileStats = fs_1.default.statSync(filePath);
-            const fileName = path_1.default.basename(filePath);
-            console.log('📤 Creating upload session with app ID...');
-            const sessionResponse = await axios_1.default.post(`https://graph.facebook.com/v21.0/${appId}/uploads`, {
-                file_length: fileStats.size,
-                file_name: fileName,
-                file_type: mimeType
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            const sessionId = sessionResponse.data.id;
-            console.log('✅ Upload session created:', sessionId);
-            console.log('📤 Uploading file content...');
-            const fileContent = fs_1.default.readFileSync(filePath);
-            const uploadResponse = await axios_1.default.post(`https://graph.facebook.com/v21.0/${sessionId}`, fileContent, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/octet-stream',
-                    'file_offset': '0'
-                }
-            });
-            console.log('✅ Business Manager upload successful!');
-            console.log('📋 Upload Response:', JSON.stringify(uploadResponse.data, null, 2));
-            const fileHandle = uploadResponse.data.h;
-            if (fileHandle) {
-                console.log('🎯 Got file handle:', fileHandle);
-                return fileHandle;
-            }
-        }
-        console.log('⚠️ Falling back to regular media upload...');
-    }
-    catch (debugError) {
-        console.log('⚠️ Business Manager approach failed, trying regular upload:', debugError.message);
-    }
     const FormData = require('form-data');
     const form = new FormData();
     form.append('file', fs_1.default.createReadStream(filePath));
     form.append('type', mimeType);
     form.append('messaging_product', 'whatsapp');
-    console.log('📤 Making regular media upload request...');
+    console.log('📤 Making 360dialog media upload request...');
     try {
-        const response = await axios_1.default.post(`https://graph.facebook.com/v21.0/${phoneNumberId}/media`, form, {
+        const response = await axios_1.default.post(`https://waba-v2.360dialog.io/media`, form, {
             headers: {
-                Authorization: `Bearer ${accessToken}`,
+                'D360-API-KEY': accessToken,
                 ...form.getHeaders()
             }
         });
         console.log('✅ Regular media upload successful!');
-        console.log('📋 Media ID:', response.data.id);
-        return response.data.id;
+        console.log('🔍 [MEDIA-UPLOAD] Raw response:', JSON.stringify(response.data, null, 2));
+        let mediaId;
+        if (response.data?.media && Array.isArray(response.data.media) && response.data.media[0]?.id) {
+            mediaId = response.data.media[0].id;
+        }
+        else if (response.data?.id) {
+            mediaId = response.data.id;
+        }
+        else {
+            console.error('❌ Unexpected media upload response format:', response.data);
+            throw new Error('Invalid media upload response format');
+        }
+        console.log('📋 Media ID:', mediaId);
+        return mediaId;
     }
     catch (error) {
         console.error('❌ All media upload approaches failed!');
@@ -123,14 +88,10 @@ const uploadMediaForTemplate = async (phoneNumberId, filePath, accessToken, mime
 const uploadMediaToWhatsApp = async (filePath, fileName, mimeType, businessInfo) => {
     const { accessToken } = businessInfo;
     if (!accessToken) {
-        throw new Error('WhatsApp Business API access token not configured');
+        throw new Error('360dialog API key not configured');
     }
-    const phoneNumberId = businessInfo.phoneNumberId || businessInfo.whatsapp_number_id;
-    if (!phoneNumberId) {
-        throw new Error('WhatsApp phone number ID not configured');
-    }
-    console.log(`📤 Uploading media to WhatsApp:`);
-    console.log(`   - Phone Number ID: ${phoneNumberId}`);
+    console.log(`📤 Uploading media to 360dialog:`);
+    console.log(`   - API Key: ${accessToken.substring(0, 20)}...`);
     console.log(`   - File: ${fileName} (${mimeType})`);
     const FormData = require('form-data');
     const formData = new FormData();
@@ -139,22 +100,63 @@ const uploadMediaToWhatsApp = async (filePath, fileName, mimeType, businessInfo)
     formData.append('type', mimeType);
     formData.append('messaging_product', 'whatsapp');
     console.log(`   - FormData prepared with file stream`);
-    console.log(`   - Sending to: https://graph.facebook.com/v21.0/${phoneNumberId}/media`);
+    console.log(`   - Sending to: https://waba-v2.360dialog.io/media`);
     try {
-        const uploadResponse = await axios_1.default.post(`https://graph.facebook.com/v21.0/${phoneNumberId}/media`, formData, {
+        const uploadResponse = await axios_1.default.post(`https://waba-v2.360dialog.io/media`, formData, {
             headers: {
                 ...formData.getHeaders(),
-                'Authorization': `Bearer ${accessToken}`
+                'D360-API-KEY': accessToken
             }
         });
         console.log(`📥 WhatsApp Media API response status: ${uploadResponse.status}`);
         console.log(`📥 WhatsApp Media API response:`, JSON.stringify(uploadResponse.data, null, 2));
-        console.log(`✅ Media uploaded successfully, ID: ${uploadResponse.data.id}`);
-        return uploadResponse.data.id;
+        let mediaId;
+        if (uploadResponse.data?.media && Array.isArray(uploadResponse.data.media) && uploadResponse.data.media[0]?.id) {
+            mediaId = uploadResponse.data.media[0].id;
+        }
+        else if (uploadResponse.data?.id) {
+            mediaId = uploadResponse.data.id;
+        }
+        else {
+            console.error('❌ Unexpected media upload response format:', uploadResponse.data);
+            throw new Error('Invalid media upload response format');
+        }
+        console.log(`✅ Media uploaded successfully, ID: ${mediaId}`);
+        return mediaId;
     }
     catch (error) {
         console.error(`❌ Media upload failed:`, error.response?.data || error.message);
         throw new Error(`Media upload error: ${error.response?.data?.error?.message || error.message}`);
+    }
+};
+const convertMediaIdToUrl = async (mediaId, accessToken) => {
+    console.log(`🔄 Converting media ID ${mediaId} to URL...`);
+    try {
+        const response = await axios_1.default.get(`https://waba-v2.360dialog.io/media/${mediaId}`, {
+            headers: {
+                'D360-API-KEY': accessToken,
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000
+        });
+        console.log(`📥 Media info response:`, JSON.stringify(response.data, null, 2));
+        let mediaUrl = response.data.url ||
+            response.data.media_url ||
+            response.data.download_url ||
+            response.data.public_url ||
+            response.data.data?.url;
+        if (!mediaUrl) {
+            mediaUrl = `https://waba-v2.360dialog.io/media/${mediaId}`;
+            console.log(`⚠️ No URL in response, using constructed URL: ${mediaUrl}`);
+        }
+        console.log(`✅ Media URL resolved: ${mediaUrl}`);
+        return mediaUrl;
+    }
+    catch (error) {
+        console.error(`❌ Failed to get media URL for ID ${mediaId}:`, error.response?.data || error.message);
+        const fallbackUrl = `https://waba-v2.360dialog.io/media/${mediaId}`;
+        console.log(`🔄 Using fallback URL: ${fallbackUrl}`);
+        return fallbackUrl;
     }
 };
 const createWhatsAppTemplate = async (templateData, businessInfo, customExamples = {}) => {
@@ -201,33 +203,44 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
         console.log('🔐 AUTHENTICATION template components:', JSON.stringify(processedComponents, null, 2));
     }
     else if (templateData.category === 'MARKETING') {
-        processedComponents = templateData.components.map(component => {
-            if (component.type === 'HEADER' && component.format === 'IMAGE') {
-                let mediaHandle = '';
-                if (component.example?.header_handle) {
+        processedComponents = await Promise.all(templateData.components.map(async (component) => {
+            if (component.type === 'HEADER' && component.format && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(component.format)) {
+                let mediaId = '';
+                if (component.format === 'IMAGE' && component.image?.id) {
+                    mediaId = component.image.id;
+                }
+                else if (component.format === 'VIDEO' && component.video?.id) {
+                    mediaId = component.video.id;
+                }
+                else if (component.format === 'DOCUMENT' && component.document?.id) {
+                    mediaId = component.document.id;
+                }
+                else if (component.example?.header_handle) {
                     if (Array.isArray(component.example.header_handle)) {
-                        mediaHandle = component.example.header_handle[0] || '';
+                        mediaId = component.example.header_handle[0] || '';
                     }
                     else if (typeof component.example.header_handle === 'string') {
-                        mediaHandle = component.example.header_handle;
+                        mediaId = component.example.header_handle;
                     }
                 }
                 else if (component.media?.id) {
-                    mediaHandle = component.media.id;
+                    mediaId = component.media.id;
                 }
-                console.log(`🔍 IMAGE HEADER DEBUG: mediaHandle = "${mediaHandle}"`);
-                console.log(`🔍 IMAGE HEADER type: ${typeof mediaHandle}`);
-                console.log(`🔍 IMAGE HEADER length: ${mediaHandle.length}`);
-                if (!mediaHandle || typeof mediaHandle !== 'string' || mediaHandle.trim().length === 0) {
-                    throw new Error(`Invalid media handle for IMAGE template: "${mediaHandle}"`);
+                console.log(`🔍 ${component.format} HEADER DEBUG: mediaId = "${mediaId}"`);
+                console.log(`🔍 ${component.format} HEADER type: ${typeof mediaId}`);
+                console.log(`🔍 ${component.format} HEADER length: ${mediaId?.length || 0}`);
+                if (!mediaId || typeof mediaId !== 'string' || mediaId.trim().length === 0) {
+                    throw new Error(`Invalid media ID for ${component.format} template: "${mediaId}"`);
                 }
-                return {
+                const mediaUrl = await convertMediaIdToUrl(mediaId, businessInfo.accessToken);
+                const result = {
                     type: 'HEADER',
-                    format: 'IMAGE',
+                    format: component.format,
                     example: {
-                        header_handle: [mediaHandle]
+                        header_handle: [mediaUrl]
                     }
                 };
+                return result;
             }
             if (component.type === 'HEADER' && component.format === 'TEXT' && component.text) {
                 return processVariablesInComponent(component, customExamples);
@@ -245,37 +258,53 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
                 return component;
             }
             return component;
-        });
+        }));
         console.log('📢 MARKETING template: All components allowed');
     }
     else if (templateData.category === 'UTILITY') {
         processedComponents = templateData.components.map(component => {
-            if (component.type === 'HEADER' && component.format === 'IMAGE') {
-                let mediaHandle = '';
-                if (component.example?.header_handle) {
+            if (component.type === 'HEADER' && component.format && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(component.format)) {
+                let mediaId = '';
+                if (component.format === 'IMAGE' && component.image?.id) {
+                    mediaId = component.image.id;
+                }
+                else if (component.format === 'VIDEO' && component.video?.id) {
+                    mediaId = component.video.id;
+                }
+                else if (component.format === 'DOCUMENT' && component.document?.id) {
+                    mediaId = component.document.id;
+                }
+                else if (component.example?.header_handle) {
                     if (Array.isArray(component.example.header_handle)) {
-                        mediaHandle = component.example.header_handle[0] || '';
+                        mediaId = component.example.header_handle[0] || '';
                     }
                     else if (typeof component.example.header_handle === 'string') {
-                        mediaHandle = component.example.header_handle;
+                        mediaId = component.example.header_handle;
                     }
                 }
                 else if (component.media?.id) {
-                    mediaHandle = component.media.id;
+                    mediaId = component.media.id;
                 }
-                console.log(`🔍 UTILITY IMAGE HEADER DEBUG: mediaHandle = "${mediaHandle}"`);
-                console.log(`🔍 UTILITY IMAGE HEADER type: ${typeof mediaHandle}`);
-                console.log(`🔍 UTILITY IMAGE HEADER length: ${mediaHandle.length}`);
-                if (!mediaHandle || typeof mediaHandle !== 'string' || mediaHandle.trim().length === 0) {
-                    throw new Error(`Invalid media handle for IMAGE template: "${mediaHandle}"`);
+                console.log(`🔍 UTILITY ${component.format} HEADER DEBUG: mediaId = "${mediaId}"`);
+                console.log(`🔍 UTILITY ${component.format} HEADER type: ${typeof mediaId}`);
+                console.log(`🔍 UTILITY ${component.format} HEADER length: ${mediaId?.length || 0}`);
+                if (!mediaId || typeof mediaId !== 'string' || mediaId.trim().length === 0) {
+                    throw new Error(`Invalid media ID for ${component.format} template: "${mediaId}"`);
                 }
-                return {
+                const result = {
                     type: 'HEADER',
-                    format: 'IMAGE',
-                    example: {
-                        header_handle: [mediaHandle]
-                    }
+                    format: component.format
                 };
+                if (component.format === 'IMAGE') {
+                    result.image = { id: mediaId };
+                }
+                else if (component.format === 'VIDEO') {
+                    result.video = { id: mediaId };
+                }
+                else if (component.format === 'DOCUMENT') {
+                    result.document = { id: mediaId };
+                }
+                return result;
             }
             if (component.type === 'HEADER' && component.format === 'TEXT' && component.text) {
                 return processVariablesInComponent(component, customExamples);
@@ -296,6 +325,14 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
         });
         console.log('📎 UTILITY template: All components allowed');
     }
+    let namespace;
+    try {
+        namespace = await getNamespace(businessInfo.wabaId, businessInfo.accessToken);
+    }
+    catch (error) {
+        console.log('⚠️ Namespace not available, proceeding without it (some 360dialog accounts auto-determine namespace)');
+        namespace = undefined;
+    }
     const payload = {
         name: templateData.name,
         language: templateData.language || 'en_US',
@@ -303,6 +340,13 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
         components: processedComponents,
         allow_category_change: templateData.allow_category_change ?? true
     };
+    if (namespace) {
+        payload.namespace = namespace;
+        console.log(`✅ Using namespace: ${namespace}`);
+    }
+    else {
+        console.log(`⚠️ No namespace provided - letting 360dialog auto-determine`);
+    }
     if (templateData.category === 'AUTHENTICATION') {
         if (templateData.add_security_recommendation !== undefined) {
             payload.add_security_recommendation = templateData.add_security_recommendation;
@@ -322,23 +366,26 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
         console.log('🔍 FINAL PAYLOAD DEBUG - header_handle value:', headerComponent.example?.header_handle);
     }
     try {
-        const response = await axios_1.default.post(`https://graph.facebook.com/v21.0/${businessInfo.wabaId}/message_templates`, payload, {
+        const response = await axios_1.default.post(`https://waba-v2.360dialog.io/v1/configs/templates`, payload, {
             headers: {
-                'Authorization': `Bearer ${businessInfo.accessToken}`,
+                'D360-API-KEY': businessInfo.accessToken,
                 'Content-Type': 'application/json'
             }
         });
-        console.log('✅ Template created successfully!');
-        console.log('📥 Template response:', JSON.stringify(response.data, null, 2));
+        console.log('✅ 360DIALOG: Template created successfully!');
+        console.log('📥 360DIALOG: Template response:', JSON.stringify(response.data, null, 2));
         return response.data;
     }
     catch (error) {
-        console.error('❌ Template creation failed!');
-        console.error('❌ Error:', error.response?.data || error.message);
-        if (error.response?.data?.error?.error_subcode === 2494102) {
-            console.error('🚨 SPECIFIC ERROR: Invalid header_handle detected!');
-            console.error('💡 This means the media handle used in header_handle is invalid or expired');
-            throw new Error('Invalid media handle: The uploaded media handle is not valid for template creation');
+        console.error('❌ 360DIALOG: Template creation failed!');
+        console.error('❌ 360DIALOG: Error:', error.response?.data || error.message);
+        if (error.response?.status === 401 || error.response?.status === 403) {
+            console.error('🚨 360DIALOG: Authentication error - check API key');
+            throw new Error('360dialog authentication failed: Invalid API key');
+        }
+        if (error.response?.status === 400) {
+            console.error('🚨 360DIALOG: Bad request - check template format');
+            throw new Error('360dialog template validation failed: ' + (error.response?.data?.message || 'Invalid template format'));
         }
         throw error;
     }
@@ -412,9 +459,9 @@ const generateExampleValue = (variableName) => {
 const getTemplateStatus = async (templateId, accessToken) => {
     console.log(`🔍 Querying template status for ID: ${templateId}`);
     try {
-        const response = await axios_1.default.get(`https://graph.facebook.com/v21.0/${templateId}?fields=status,category,name,language`, {
+        const response = await axios_1.default.get(`https://waba-v2.360dialog.io/v1/configs/templates/${templateId}`, {
             headers: {
-                'Authorization': `Bearer ${accessToken}`
+                'D360-API-KEY': accessToken
             }
         });
         const templateStatus = response.data.status;
@@ -428,21 +475,38 @@ const getTemplateStatus = async (templateId, accessToken) => {
     }
 };
 const getNamespace = async (wabaId, accessToken) => {
-    console.log(`🔍 Getting namespace for WABA: ${wabaId}`);
-    try {
-        const response = await axios_1.default.get(`https://graph.facebook.com/v21.0/${wabaId}?fields=message_template_namespace`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
+    console.log(`🔍 Getting namespace for 360dialog channel: ${wabaId}`);
+    const endpoints = [
+        `https://waba-v2.360dialog.io/v1/configs/about`,
+        `https://waba-v2.360dialog.io/v1/configs/application/settings`,
+        `https://waba-v2.360dialog.io/v1/configs/business-profile`,
+    ];
+    for (const endpoint of endpoints) {
+        try {
+            console.log(`🔍 Trying endpoint: ${endpoint}`);
+            const response = await axios_1.default.get(endpoint, {
+                headers: {
+                    'D360-API-KEY': accessToken
+                }
+            });
+            console.log(`📥 Response from ${endpoint}:`, JSON.stringify(response.data, null, 2));
+            const namespace = response.data.message_template_namespace ||
+                response.data.namespace ||
+                response.data.waba_namespace ||
+                response.data.business?.namespace ||
+                response.data.data?.namespace;
+            if (namespace) {
+                console.log(`✅ Got namespace from ${endpoint}: ${namespace}`);
+                return namespace;
             }
-        });
-        const namespace = response.data.message_template_namespace;
-        console.log(`✅ Got namespace: ${namespace}`);
-        return namespace;
+        }
+        catch (error) {
+            console.log(`⚠️ Endpoint ${endpoint} failed:`, error.response?.data?.error || error.message);
+            continue;
+        }
     }
-    catch (error) {
-        console.error('❌ Failed to get namespace:', error.response?.data || error.message);
-        throw new Error(`Failed to get namespace: ${error.response?.data?.error?.message || error.message}`);
-    }
+    console.error('❌ All namespace endpoints failed');
+    throw new Error('Unable to retrieve namespace from 360dialog API. Namespace is required for template creation.');
 };
 router.get('/', async (req, res) => {
     try {
@@ -453,6 +517,54 @@ router.get('/', async (req, res) => {
         const status = req.query.status;
         const category = req.query.category;
         const language = req.query.language;
+        try {
+            const creds = await (0, _360dialogCredentials_1.resolve360DialogCredentials)(userId);
+            if (creds?.apiKey) {
+                console.log(`🔄 [AUTO-SYNC] Triggering background 360dialog sync for user ${userId}`);
+                const { fetchAllTemplatesFrom360Dialog, normalize360DialogStatus } = require('../services/wa360Templates');
+                const { templatesRepo } = require('../repos/templatesRepo');
+                const { sseHub } = require('../services/sseBroadcaster');
+                setImmediate(async () => {
+                    try {
+                        const allTemplates = await fetchAllTemplatesFrom360Dialog(creds.apiKey);
+                        console.log(`📋 [AUTO-SYNC] Processing ${allTemplates.length} templates from 360dialog`);
+                        for (const templateData of allTemplates) {
+                            try {
+                                await templatesRepo.upsertStatusAndCategory({
+                                    userId,
+                                    name: templateData.name,
+                                    language: templateData.language,
+                                    status: normalize360DialogStatus(templateData.status || 'UNKNOWN'),
+                                    category: templateData.category,
+                                    reason: templateData.reason || null,
+                                    reviewedAt: templateData.updated_at ? new Date(templateData.updated_at) : new Date()
+                                });
+                                sseHub.emitTemplate(userId, {
+                                    type: 'template_update',
+                                    name: templateData.name,
+                                    language: templateData.language,
+                                    status: normalize360DialogStatus(templateData.status || 'UNKNOWN'),
+                                    category: templateData.category || null,
+                                    reason: templateData.reason || null,
+                                    at: new Date().toISOString(),
+                                    source: '360dialog_auto_sync'
+                                });
+                            }
+                            catch (error) {
+                                console.error(`❌ [AUTO-SYNC] Error processing template ${templateData.name}:`, error);
+                            }
+                        }
+                        console.log(`✅ [AUTO-SYNC] Completed background sync for user ${userId}`);
+                    }
+                    catch (error) {
+                        console.error(`❌ [AUTO-SYNC] Background sync failed for user ${userId}:`, error);
+                    }
+                });
+            }
+        }
+        catch (syncError) {
+            console.log(`⚠️ [AUTO-SYNC] Background sync not available for user ${userId}: ${syncError?.message || syncError}`);
+        }
         let whereClause = 'WHERE user_id = $1';
         const params = [userId];
         let paramCount = 1;
@@ -563,7 +675,14 @@ router.post('/', upload.single('headerMedia'), async (req, res) => {
             components.push({ type: 'HEADER', format: 'TEXT', text: req.body.headerText });
         }
         else if (req.file) {
-            components.push({ type: 'HEADER', format: 'IMAGE' });
+            let format = 'IMAGE';
+            if (req.file.mimetype.startsWith('video/')) {
+                format = 'VIDEO';
+            }
+            else if (req.file.mimetype === 'application/pdf') {
+                format = 'DOCUMENT';
+            }
+            components.push({ type: 'HEADER', format: format });
         }
         if (req.body.bodyText) {
             components.push({ type: 'BODY', text: req.body.bodyText });
@@ -621,22 +740,22 @@ router.post('/', upload.single('headerMedia'), async (req, res) => {
         let rejection_reason = null;
         if (req.file) {
             console.log('📄 Processing uploaded header media...');
-            const businessResult = await db_1.default.query('SELECT waba_id, access_token, whatsapp_number_id FROM user_business_info WHERE user_id = $1 AND is_active = true', [userId]);
+            const businessResult = await db_1.default.query('SELECT channel_id, api_key FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
             if (businessResult.rows.length === 0) {
                 fs_1.default.unlinkSync(req.file.path);
                 return res.status(400).json({
-                    error: 'WhatsApp Business API credentials not configured. Please set up your business information first.'
+                    error: '360dialog configuration not found. Please configure your 360dialog API settings in the admin panel first.'
                 });
             }
             const businessInfo = {
-                accessToken: businessResult.rows[0].access_token,
-                waba_id: businessResult.rows[0].waba_id,
-                phoneNumberId: businessResult.rows[0].whatsapp_number_id
+                accessToken: businessResult.rows[0].api_key,
+                waba_id: businessResult.rows[0].channel_id,
+                phoneNumberId: businessResult.rows[0].channel_id
             };
-            console.log('🏢 BUSINESS INFO DEBUG:');
-            console.log(`  - WABA ID: ${businessInfo.waba_id}`);
+            console.log('🏢 360DIALOG INFO DEBUG:');
+            console.log(`  - Channel ID: ${businessInfo.waba_id}`);
             console.log(`  - Phone Number ID: ${businessInfo.phoneNumberId}`);
-            console.log(`  - Access Token: ${businessInfo.accessToken.substring(0, 20)}...`);
+            console.log(`  - API Key: ${businessInfo.accessToken.substring(0, 20)}...`);
             try {
                 const mediaId = await uploadMediaForTemplate(businessInfo.phoneNumberId, req.file.path, businessInfo.accessToken, req.file.mimetype);
                 console.log('✅ Template media uploaded successfully, ID:', mediaId);
@@ -647,14 +766,24 @@ router.post('/', upload.single('headerMedia'), async (req, res) => {
                     throw new Error(`Invalid media ID format received: "${mediaId}". Expected a valid WhatsApp media ID.`);
                 }
                 templateData.components = templateData.components.map(component => {
-                    if (component.type === 'HEADER' && component.format === 'IMAGE') {
-                        return {
+                    if (component.type === 'HEADER' && component.format && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(component.format)) {
+                        const result = {
                             ...component,
                             media: undefined,
                             example: {
                                 header_handle: [mediaId]
                             }
                         };
+                        if (component.format === 'IMAGE') {
+                            result.image = { id: mediaId };
+                        }
+                        else if (component.format === 'VIDEO') {
+                            result.video = { id: mediaId };
+                        }
+                        else if (component.format === 'DOCUMENT') {
+                            result.document = { id: mediaId };
+                        }
+                        return result;
                     }
                     return component;
                 });
@@ -666,22 +795,22 @@ router.post('/', upload.single('headerMedia'), async (req, res) => {
                     fs_1.default.unlinkSync(req.file.path);
                 }
                 return res.status(400).json({
-                    error: 'Failed to upload media to WhatsApp',
+                    error: 'Failed to upload media to 360dialog',
                     details: uploadError.message
                 });
             }
         }
         if (req.body.submit_to_whatsapp || req.body.submit_to_whatsapp) {
             try {
-                const businessResult = await db_1.default.query('SELECT waba_id, access_token FROM user_business_info WHERE user_id = $1 AND is_active = true', [userId]);
-                if (businessResult.rows.length === 0) {
+                const dialogResult = await db_1.default.query('SELECT channel_id, api_key FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
+                if (dialogResult.rows.length === 0) {
                     return res.status(400).json({
-                        error: 'WhatsApp Business API credentials not configured. Please set up your business information first.'
+                        error: '360dialog configuration not found. Please configure your 360dialog API settings in the admin panel first.'
                     });
                 }
                 const businessInfo = {
-                    wabaId: businessResult.rows[0].waba_id,
-                    accessToken: businessResult.rows[0].access_token
+                    wabaId: dialogResult.rows[0].channel_id,
+                    accessToken: dialogResult.rows[0].api_key
                 };
                 const whatsappResult = await createWhatsAppTemplate(templateData, businessInfo, variableExamples);
                 template_id = whatsappResult.id;
@@ -700,17 +829,24 @@ router.post('/', upload.single('headerMedia'), async (req, res) => {
         let media_id = null;
         for (const component of templateData.components) {
             if (component.type === 'HEADER') {
-                if (component.format === 'IMAGE' && component.example?.header_handle) {
+                if (component.format === 'IMAGE') {
                     header_type = 'STATIC_IMAGE';
-                    if (Array.isArray(component.example.header_handle) && component.example.header_handle.length > 0) {
-                        header_handle = component.example.header_handle[0];
-                        header_media_id = header_handle;
-                        media_id = header_handle;
+                    let mediaId = '';
+                    if (component.image?.id) {
+                        mediaId = component.image.id;
                     }
-                    else if (typeof component.example.header_handle === 'string') {
-                        header_handle = component.example.header_handle;
-                        header_media_id = header_handle;
-                        media_id = header_handle;
+                    else if (component.example?.header_handle) {
+                        if (Array.isArray(component.example.header_handle) && component.example.header_handle.length > 0) {
+                            mediaId = component.example.header_handle[0];
+                        }
+                        else if (typeof component.example.header_handle === 'string') {
+                            mediaId = component.example.header_handle;
+                        }
+                    }
+                    if (mediaId) {
+                        header_handle = mediaId;
+                        header_media_id = mediaId;
+                        media_id = mediaId;
                     }
                 }
                 else if (component.format === 'TEXT') {
@@ -718,9 +854,19 @@ router.post('/', upload.single('headerMedia'), async (req, res) => {
                 }
                 else if (component.format === 'VIDEO') {
                     header_type = 'STATIC_VIDEO';
+                    if (component.video?.id) {
+                        header_handle = component.video.id;
+                        header_media_id = component.video.id;
+                        media_id = component.video.id;
+                    }
                 }
                 else if (component.format === 'DOCUMENT') {
                     header_type = 'STATIC_DOCUMENT';
+                    if (component.document?.id) {
+                        header_handle = component.document.id;
+                        header_media_id = component.document.id;
+                        media_id = component.document.id;
+                    }
                 }
                 break;
             }
@@ -856,15 +1002,15 @@ router.post('/authentication', async (req, res) => {
         let whatsapp_response = null;
         let status = 'DRAFT';
         let rejection_reason = null;
-        const businessResult = await db_1.default.query('SELECT waba_id, access_token FROM user_business_info WHERE user_id = $1 AND is_active = true', [userId]);
+        const businessResult = await db_1.default.query('SELECT channel_id, api_key FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
         if (businessResult.rows.length === 0) {
             return res.status(400).json({
-                error: 'WhatsApp Business API credentials not configured. Please set up your business information first.'
+                error: '360dialog configuration not found. Please configure your 360dialog API settings in the admin panel first.'
             });
         }
         const businessInfo = {
-            wabaId: businessResult.rows[0].waba_id,
-            accessToken: businessResult.rows[0].access_token
+            wabaId: businessResult.rows[0].channel_id,
+            accessToken: businessResult.rows[0].api_key
         };
         try {
             const whatsappResult = await createWhatsAppTemplate(templateData, businessInfo, {});
@@ -1093,15 +1239,15 @@ router.post('/:id/submit', async (req, res) => {
                 error: 'Can only submit draft or rejected templates'
             });
         }
-        const businessResult = await db_1.default.query('SELECT waba_id, access_token FROM user_business_info WHERE user_id = $1 AND is_active = true', [userId]);
+        const businessResult = await db_1.default.query('SELECT channel_id, api_key FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
         if (businessResult.rows.length === 0) {
             return res.status(400).json({
-                error: 'WhatsApp Business API credentials not configured. Please set up your business information first.'
+                error: '360dialog configuration not found. Please configure your 360dialog API settings in the admin panel first.'
             });
         }
         const businessInfo = {
-            wabaId: businessResult.rows[0].waba_id,
-            accessToken: businessResult.rows[0].access_token
+            wabaId: businessResult.rows[0].channel_id,
+            accessToken: businessResult.rows[0].api_key
         };
         try {
             const templateData = {
@@ -1118,13 +1264,13 @@ router.post('/:id/submit', async (req, res) => {
              rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP
          WHERE id = $3`, [whatsappResult.id, JSON.stringify(whatsappResult), id]);
             res.json({
-                message: 'Template submitted to WhatsApp successfully',
+                message: 'Template submitted to 360dialog successfully',
                 templateId: whatsappResult.id,
                 status: 'PENDING'
             });
         }
         catch (whatsappError) {
-            console.error('WhatsApp submission error:', whatsappError);
+            console.error('360dialog submission error:', whatsappError);
             await db_1.default.query(`UPDATE templates 
          SET status = 'REJECTED', rejection_reason = $1, updated_at = CURRENT_TIMESTAMP
          WHERE id = $2`, [whatsappError.message, id]);
@@ -1189,18 +1335,18 @@ router.post('/upload-template-media', upload.single('media'), async (req, res) =
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        const businessResult = await db_1.default.query('SELECT waba_id, access_token, whatsapp_number_id FROM user_business_info WHERE user_id = $1 AND is_active = true', [userId]);
+        const businessResult = await db_1.default.query('SELECT channel_id, api_key FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
         if (businessResult.rows.length === 0) {
             fs_1.default.unlinkSync(req.file.path);
             return res.status(400).json({
-                error: 'WhatsApp Business API credentials not configured. Please set up your business information first.'
+                error: '360dialog configuration not found. Please configure your 360dialog API settings in the admin panel first.'
             });
         }
         const businessInfo = {
-            wabaId: businessResult.rows[0].waba_id,
-            accessToken: businessResult.rows[0].access_token,
-            waba_id: businessResult.rows[0].waba_id,
-            phoneNumberId: businessResult.rows[0].whatsapp_number_id
+            wabaId: businessResult.rows[0].channel_id,
+            accessToken: businessResult.rows[0].api_key,
+            waba_id: businessResult.rows[0].channel_id,
+            phoneNumberId: businessResult.rows[0].channel_id
         };
         try {
             const mediaId = await uploadMediaForTemplate(businessInfo.phoneNumberId, req.file.path, businessInfo.accessToken, req.file.mimetype);
@@ -1216,12 +1362,12 @@ router.post('/upload-template-media', upload.single('media'), async (req, res) =
             });
         }
         catch (uploadError) {
-            console.error('WhatsApp template media upload error:', uploadError);
+            console.error('360dialog template media upload error:', uploadError);
             if (fs_1.default.existsSync(req.file.path)) {
                 fs_1.default.unlinkSync(req.file.path);
             }
             res.status(400).json({
-                error: 'Failed to upload template media to WhatsApp',
+                error: 'Failed to upload template media to 360dialog',
                 details: uploadError.message
             });
         }
@@ -1240,17 +1386,17 @@ router.post('/upload-media', upload.single('media'), async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        const businessResult = await db_1.default.query('SELECT waba_id, access_token, whatsapp_number_id FROM user_business_info WHERE user_id = $1 AND is_active = true', [userId]);
+        const businessResult = await db_1.default.query('SELECT channel_id, api_key FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
         if (businessResult.rows.length === 0) {
             fs_1.default.unlinkSync(req.file.path);
             return res.status(400).json({
-                error: 'WhatsApp Business API credentials not configured. Please set up your business information first.'
+                error: '360dialog configuration not found. Please configure your 360dialog API settings in the admin panel first.'
             });
         }
         const businessInfo = {
-            wabaId: businessResult.rows[0].waba_id,
-            accessToken: businessResult.rows[0].access_token,
-            whatsapp_number_id: businessResult.rows[0].whatsapp_number_id
+            wabaId: businessResult.rows[0].channel_id,
+            accessToken: businessResult.rows[0].api_key,
+            whatsapp_number_id: businessResult.rows[0].channel_id
         };
         try {
             const mediaId = await uploadMediaToWhatsApp(req.file.path, req.file.originalname, req.file.mimetype, businessInfo);
@@ -1265,12 +1411,12 @@ router.post('/upload-media', upload.single('media'), async (req, res) => {
             });
         }
         catch (uploadError) {
-            console.error('WhatsApp media upload error:', uploadError);
+            console.error('360dialog media upload error:', uploadError);
             if (fs_1.default.existsSync(req.file.path)) {
                 fs_1.default.unlinkSync(req.file.path);
             }
             res.status(400).json({
-                error: 'Failed to upload media to WhatsApp',
+                error: 'Failed to upload media to 360dialog',
                 details: uploadError.message
             });
         }
@@ -1294,16 +1440,16 @@ router.post('/:id/refresh-status', async (req, res) => {
         const template = templateResult.rows[0];
         if (!template.template_id) {
             return res.status(400).json({
-                error: 'Template does not have a WhatsApp template ID - cannot refresh status'
+                error: 'Template does not have a 360dialog template ID - cannot refresh status'
             });
         }
-        const businessResult = await db_1.default.query('SELECT access_token FROM user_business_info WHERE user_id = $1 AND is_active = true', [userId]);
+        const businessResult = await db_1.default.query('SELECT api_key FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
         if (businessResult.rows.length === 0) {
             return res.status(400).json({
-                error: 'WhatsApp Business API credentials not configured'
+                error: '360dialog configuration not found. Please configure your 360dialog API settings in the admin panel first.'
             });
         }
-        const accessToken = businessResult.rows[0].access_token;
+        const accessToken = businessResult.rows[0].api_key;
         console.log(`🔄 Refreshing status for template ${template.name} (ID: ${template.template_id})`);
         const currentStatus = await getTemplateStatus(template.template_id, accessToken);
         if (currentStatus) {
@@ -1329,7 +1475,7 @@ router.post('/:id/refresh-status', async (req, res) => {
         }
         else {
             res.status(400).json({
-                error: 'Could not retrieve template status from WhatsApp API',
+                error: 'Could not retrieve template status from 360dialog API',
                 currentStatus: template.status
             });
         }
