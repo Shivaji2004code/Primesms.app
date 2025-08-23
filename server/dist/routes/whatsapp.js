@@ -1348,14 +1348,20 @@ router.post('/send-bulk', auth_1.requireAuth, async (req, res) => {
                 error: 'Failed to check credit balance'
             });
         }
-        const numberResult = await db_1.default.query('SELECT access_token, business_name FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true', [userId, phone_number_id]);
-        if (numberResult.rows.length === 0) {
+        const dialogResult = await db_1.default.query('SELECT channel_id, api_key, business_name FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
+        if (dialogResult.rows.length === 0) {
             return res.status(403).json({
                 success: false,
-                error: 'WhatsApp number not found or access denied'
+                error: '360dialog configuration not found for bulk send. Please configure your 360dialog API settings in the admin panel.'
             });
         }
-        const { access_token } = numberResult.rows[0];
+        const { channel_id, api_key } = dialogResult.rows[0];
+        if (!channel_id || !api_key) {
+            return res.status(403).json({
+                success: false,
+                error: '360dialog API key or Channel ID not configured for bulk send. Please complete your 360dialog setup in the admin panel.'
+            });
+        }
         const templateResult = await db_1.default.query('SELECT components, header_media_id, header_type, header_media_url, header_handle, media_id, category FROM templates WHERE user_id = $1 AND name = $2 AND language = $3', [userId, template_name, language]);
         if (templateResult.rows.length === 0) {
             return res.status(404).json({
@@ -1470,7 +1476,7 @@ router.post('/send-bulk', auth_1.requireAuth, async (req, res) => {
         let failCount = 0;
         const messagePromises = [];
         for (const campaignEntry of campaignEntries) {
-            const messagePromise = sendTemplateMessage(phone_number_id, access_token, campaignEntry.recipient, template_name, language, variables, templateResult.rows[0].components, campaignEntry.id, userId, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].header_media_url, templateResult.rows[0].header_handle, templateResult.rows[0].media_id, templateResult.rows[0].category);
+            const messagePromise = send360DialogMessage(userId, campaignEntry.recipient, template_name, language, variables, templateResult.rows[0].components, campaignEntry.id, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].media_id, templateResult.rows[0].category);
             messagePromises.push(messagePromise);
         }
         const results = await Promise.allSettled(messagePromises);
@@ -1918,11 +1924,18 @@ router.post('/custom-send', auth_1.requireAuth, upload.single('file'), async (re
                     error: 'Failed to check credit balance'
                 });
             }
-            const numberResult = await db_1.default.query('SELECT access_token, business_name FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true', [userId, wabaId]);
-            if (numberResult.rows.length === 0) {
+            const dialogResult = await db_1.default.query('SELECT channel_id, api_key, business_name FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
+            if (dialogResult.rows.length === 0) {
                 return res.status(403).json({
                     success: false,
-                    error: 'WhatsApp number not found or access denied'
+                    error: '360dialog configuration not found for custom send. Please configure your 360dialog API settings in the admin panel.'
+                });
+            }
+            const { channel_id, api_key } = dialogResult.rows[0];
+            if (!channel_id || !api_key) {
+                return res.status(403).json({
+                    success: false,
+                    error: '360dialog API key or Channel ID not configured for custom send. Please complete your 360dialog setup in the admin panel.'
                 });
             }
             const templateResult = await db_1.default.query('SELECT components, header_media_id, header_type, header_media_url, header_handle, media_id, category FROM templates WHERE user_id = $1 AND name = $2 AND language = $3', [userId, templateName, language]);
@@ -2003,7 +2016,7 @@ router.post('/custom-send', auth_1.requireAuth, upload.single('file'), async (re
             let successCount = 0;
             let failCount = 0;
             const messagePromises = campaignEntries.map((campaignEntry) => {
-                return sendTemplateMessage(wabaId, numberResult.rows[0].access_token, formatPhoneNumber(campaignEntry.recipient.toString()), templateName, language, campaignEntry.variables, templateResult.rows[0].components, campaignEntry.id, userId, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].header_media_url, templateResult.rows[0].header_handle, templateResult.rows[0].media_id, templateResult.rows[0].category).then(() => {
+                return send360DialogMessage(userId, formatPhoneNumber(campaignEntry.recipient.toString()), templateName, language, campaignEntry.variables, templateResult.rows[0].components, campaignEntry.id, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].media_id, templateResult.rows[0].category).then(() => {
                     successCount++;
                 }).catch(async (error) => {
                     failCount++;
@@ -2380,14 +2393,20 @@ router.post('/send-custom-messages', auth_1.requireAuth, async (req, res) => {
                 error: 'Failed to check credit balance'
             });
         }
-        const businessResult = await db_1.default.query('SELECT access_token, whatsapp_number_id FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true', [userId, phoneNumberId]);
-        if (businessResult.rows.length === 0) {
-            return res.status(400).json({
+        const dialogResult = await db_1.default.query('SELECT channel_id, api_key, business_name FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
+        if (dialogResult.rows.length === 0) {
+            return res.status(403).json({
                 success: false,
-                error: 'WhatsApp Business API credentials not configured for this phone number'
+                error: '360dialog configuration not found for custom messages. Please configure your 360dialog API settings in the admin panel.'
             });
         }
-        const businessInfo = businessResult.rows[0];
+        const { channel_id, api_key } = dialogResult.rows[0];
+        if (!channel_id || !api_key) {
+            return res.status(403).json({
+                success: false,
+                error: '360dialog API key or Channel ID not configured for custom messages. Please complete your 360dialog setup in the admin panel.'
+            });
+        }
         const templateResult = await db_1.default.query('SELECT components, category FROM templates WHERE user_id = $1 AND name = $2 AND language = $3', [userId, templateName, language]);
         if (templateResult.rows.length === 0) {
             return res.status(404).json({
@@ -2451,7 +2470,7 @@ router.post('/send-custom-messages', auth_1.requireAuth, async (req, res) => {
           (user_id, campaign_name, template_used, phone_number_id, recipient_number, language_code, status, campaign_data, created_at)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
           RETURNING id
-        `, [userId, 'Custom Messages', templateName, businessInfo.whatsapp_number_id, recipient, language, 'pending', JSON.stringify({ variables, template_components: template.components })]);
+        `, [userId, 'Custom Messages', templateName, channel_id, recipient, language, 'pending', JSON.stringify({ variables, template_components: template.components })]);
                 campaignEntries.push({
                     id: campaignResult.rows[0].id,
                     recipient,
@@ -2465,7 +2484,7 @@ router.post('/send-custom-messages', auth_1.requireAuth, async (req, res) => {
         }
         for (const campaignEntry of campaignEntries) {
             try {
-                await sendTemplateMessage(businessInfo.whatsapp_number_id, businessInfo.access_token, campaignEntry.recipient, templateName, language, campaignEntry.variables, template.components, campaignEntry.id.toString(), userId, template.header_media_id, template.header_type, template.header_media_url, template.header_handle, template.media_id, template.category);
+                await send360DialogMessage(userId, campaignEntry.recipient, templateName, language, campaignEntry.variables, template.components, campaignEntry.id.toString(), template.header_media_id, template.header_type, template.media_id, template.category);
                 successfulSends++;
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
@@ -2582,14 +2601,20 @@ router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
                 error: 'Failed to check credit balance'
             });
         }
-        const numberResult = await db_1.default.query('SELECT access_token, business_name FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true', [userId, actualWabaId]);
-        if (numberResult.rows.length === 0) {
+        const dialogResult = await db_1.default.query('SELECT channel_id, api_key, business_name FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
+        if (dialogResult.rows.length === 0) {
             return res.status(403).json({
                 success: false,
-                error: 'WhatsApp number not found or access denied'
+                error: '360dialog configuration not found for bulk send. Please configure your 360dialog API settings in the admin panel.'
             });
         }
-        const { access_token } = numberResult.rows[0];
+        const { channel_id, api_key } = dialogResult.rows[0];
+        if (!channel_id || !api_key) {
+            return res.status(403).json({
+                success: false,
+                error: '360dialog API key or Channel ID not configured for bulk send. Please complete your 360dialog setup in the admin panel.'
+            });
+        }
         const templateResult = await db_1.default.query('SELECT components, header_media_id, header_type, header_media_url, header_handle, media_id, category FROM templates WHERE user_id = $1 AND name = $2 AND language = $3', [userId, templateName, language]);
         if (templateResult.rows.length === 0) {
             return res.status(404).json({
@@ -2674,7 +2699,7 @@ router.post('/bulk-customize-send', auth_1.requireAuth, async (req, res) => {
         for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
             const batch = batches[batchIndex];
             console.log(`📤 BULK-CUSTOMIZE-SEND: Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} messages)`);
-            const batchPromises = batch.map(campaignEntry => sendTemplateMessage(actualWabaId, access_token, campaignEntry.recipient, templateName, language, campaignEntry.variables, templateResult.rows[0].components, campaignEntry.id.toString(), userId, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].header_media_url, templateResult.rows[0].header_handle, templateResult.rows[0].media_id, templateResult.rows[0].category));
+            const batchPromises = batch.map(campaignEntry => send360DialogMessage(userId, campaignEntry.recipient, templateName, language, campaignEntry.variables, templateResult.rows[0].components, campaignEntry.id.toString(), templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].media_id, templateResult.rows[0].category));
             const batchResults = await Promise.allSettled(batchPromises);
             batchResults.forEach((result, index) => {
                 const campaignEntry = batch[index];

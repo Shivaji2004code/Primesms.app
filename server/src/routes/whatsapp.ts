@@ -1768,20 +1768,27 @@ router.post('/send-bulk', requireAuth, async (req, res) => {
       });
     }
 
-    // Get WhatsApp number details and verify ownership
-    const numberResult = await pool.query(
-      'SELECT access_token, business_name FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true',
-      [userId, phone_number_id]
+    // Verify user has 360dialog configuration for send-bulk
+    const dialogResult = await pool.query(
+      'SELECT channel_id, api_key, business_name FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true',
+      [userId, '360dialog']
     );
 
-    if (numberResult.rows.length === 0) {
+    if (dialogResult.rows.length === 0) {
       return res.status(403).json({
         success: false,
-        error: 'WhatsApp number not found or access denied'
+        error: '360dialog configuration not found for bulk send. Please configure your 360dialog API settings in the admin panel.'
       });
     }
 
-    const { access_token } = numberResult.rows[0];
+    const { channel_id, api_key } = dialogResult.rows[0];
+    
+    if (!channel_id || !api_key) {
+      return res.status(403).json({
+        success: false,
+        error: '360dialog API key or Channel ID not configured for bulk send. Please complete your 360dialog setup in the admin panel.'
+      });
+    }
 
     // Get template details including media ID, header type, and media URL
     const templateResult = await pool.query(
@@ -1948,20 +1955,16 @@ router.post('/send-bulk', requireAuth, async (req, res) => {
     const messagePromises = [];
 
     for (const campaignEntry of campaignEntries) {
-      const messagePromise = sendTemplateMessage(
-        phone_number_id,
-        access_token,
+      const messagePromise = send360DialogMessage(
+        userId,
         campaignEntry.recipient,
         template_name,
         language,
         variables,
         templateResult.rows[0].components,
         campaignEntry.id, // Use individual campaign ID
-        userId,
         templateResult.rows[0].header_media_id,
         templateResult.rows[0].header_type,
-        templateResult.rows[0].header_media_url,
-        templateResult.rows[0].header_handle,
         templateResult.rows[0].media_id,
         templateResult.rows[0].category
       );
@@ -2557,16 +2560,25 @@ router.post('/custom-send', requireAuth, upload.single('file'), async (req, res)
         });
       }
 
-      // Get WhatsApp number details and verify ownership
-      const numberResult = await pool.query(
-        'SELECT access_token, business_name FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true',
-        [userId, wabaId]
+      // Verify user has 360dialog configuration for custom send
+      const dialogResult = await pool.query(
+        'SELECT channel_id, api_key, business_name FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true',
+        [userId, '360dialog']
       );
 
-      if (numberResult.rows.length === 0) {
+      if (dialogResult.rows.length === 0) {
         return res.status(403).json({
           success: false,
-          error: 'WhatsApp number not found or access denied'
+          error: '360dialog configuration not found for custom send. Please configure your 360dialog API settings in the admin panel.'
+        });
+      }
+
+      const { channel_id, api_key } = dialogResult.rows[0];
+      
+      if (!channel_id || !api_key) {
+        return res.status(403).json({
+          success: false,
+          error: '360dialog API key or Channel ID not configured for custom send. Please complete your 360dialog setup in the admin panel.'
         });
       }
 
@@ -2677,20 +2689,16 @@ router.post('/custom-send', requireAuth, upload.single('file'), async (req, res)
       let failCount = 0;
 
       const messagePromises = campaignEntries.map((campaignEntry) => {
-        return sendTemplateMessage(
-          wabaId,
-          numberResult.rows[0].access_token,
+        return send360DialogMessage(
+          userId,
           formatPhoneNumber(campaignEntry.recipient.toString()),
           templateName,
           language,
           campaignEntry.variables,
           templateResult.rows[0].components,
           campaignEntry.id, // Use individual campaign ID
-          userId,
           templateResult.rows[0].header_media_id,
-          templateResult.rows[0].header_type,  
-          templateResult.rows[0].header_media_url,
-          templateResult.rows[0].header_handle,
+          templateResult.rows[0].header_type,
           templateResult.rows[0].media_id,
           templateResult.rows[0].category
         ).then(() => {
@@ -3156,20 +3164,27 @@ router.post('/send-custom-messages', requireAuth, async (req, res) => {
       });
     }
 
-    // Get user's business info
-    const businessResult = await pool.query(
-      'SELECT access_token, whatsapp_number_id FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true',
-      [userId, phoneNumberId]
+    // Verify user has 360dialog configuration for send-custom-messages
+    const dialogResult = await pool.query(
+      'SELECT channel_id, api_key, business_name FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true',
+      [userId, '360dialog']
     );
 
-    if (businessResult.rows.length === 0) {
-      return res.status(400).json({
+    if (dialogResult.rows.length === 0) {
+      return res.status(403).json({
         success: false,
-        error: 'WhatsApp Business API credentials not configured for this phone number'
+        error: '360dialog configuration not found for custom messages. Please configure your 360dialog API settings in the admin panel.'
       });
     }
 
-    const businessInfo = businessResult.rows[0];
+    const { channel_id, api_key } = dialogResult.rows[0];
+    
+    if (!channel_id || !api_key) {
+      return res.status(403).json({
+        success: false,
+        error: '360dialog API key or Channel ID not configured for custom messages. Please complete your 360dialog setup in the admin panel.'
+      });
+    }
 
     // Get template details
     const templateResult = await pool.query(
@@ -3259,7 +3274,7 @@ router.post('/send-custom-messages', requireAuth, async (req, res) => {
           (user_id, campaign_name, template_used, phone_number_id, recipient_number, language_code, status, campaign_data, created_at)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
           RETURNING id
-        `, [userId, 'Custom Messages', templateName, businessInfo.whatsapp_number_id, recipient, language, 'pending', JSON.stringify({ variables, template_components: template.components })]);
+        `, [userId, 'Custom Messages', templateName, channel_id, recipient, language, 'pending', JSON.stringify({ variables, template_components: template.components })]);
 
         campaignEntries.push({
           id: campaignResult.rows[0].id,
@@ -3275,21 +3290,17 @@ router.post('/send-custom-messages', requireAuth, async (req, res) => {
     // Process each recipient with their individual campaign IDs
     for (const campaignEntry of campaignEntries) {
       try {
-        // Send the message using the individual campaign ID
-        await sendTemplateMessage(
-          businessInfo.whatsapp_number_id,
-          businessInfo.access_token,
+        // Send the message using 360dialog API
+        await send360DialogMessage(
+          userId,
           campaignEntry.recipient,
           templateName,
           language,
           campaignEntry.variables,
           template.components,
           campaignEntry.id.toString(),
-          userId,
           template.header_media_id,
           template.header_type,
-          template.header_media_url,
-          template.header_handle,
           template.media_id,
           template.category
         );
@@ -3452,20 +3463,27 @@ router.post('/bulk-customize-send', requireAuth, async (req, res) => {
       });
     }
 
-    // Get WhatsApp number details and verify ownership
-    const numberResult = await pool.query(
-      'SELECT access_token, business_name FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true',
-      [userId, actualWabaId]
+    // Verify user has 360dialog configuration for bulk send
+    const dialogResult = await pool.query(
+      'SELECT channel_id, api_key, business_name FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true',
+      [userId, '360dialog']
     );
 
-    if (numberResult.rows.length === 0) {
+    if (dialogResult.rows.length === 0) {
       return res.status(403).json({
         success: false,
-        error: 'WhatsApp number not found or access denied'
+        error: '360dialog configuration not found for bulk send. Please configure your 360dialog API settings in the admin panel.'
       });
     }
 
-    const { access_token } = numberResult.rows[0];
+    const { channel_id, api_key } = dialogResult.rows[0];
+    
+    if (!channel_id || !api_key) {
+      return res.status(403).json({
+        success: false,
+        error: '360dialog API key or Channel ID not configured for bulk send. Please complete your 360dialog setup in the admin panel.'
+      });
+    }
 
     // Get template details
     const templateResult = await pool.query(
@@ -3576,22 +3594,18 @@ router.post('/bulk-customize-send', requireAuth, async (req, res) => {
       const batch = batches[batchIndex];
       console.log(`📤 BULK-CUSTOMIZE-SEND: Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} messages)`);
       
-      // Process all messages in this batch concurrently
+      // Process all messages in this batch concurrently using 360dialog
       const batchPromises = batch.map(campaignEntry => 
-        sendTemplateMessage(
-          actualWabaId,
-          access_token,
+        send360DialogMessage(
+          userId,
           campaignEntry.recipient,
           templateName,
           language,
           campaignEntry.variables, // Use individual custom variables for each recipient
           templateResult.rows[0].components,
           campaignEntry.id.toString(),
-          userId,
           templateResult.rows[0].header_media_id,
           templateResult.rows[0].header_type,
-          templateResult.rows[0].header_media_url,
-          templateResult.rows[0].header_handle,
           templateResult.rows[0].media_id,
           templateResult.rows[0].category
         )
