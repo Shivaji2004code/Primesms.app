@@ -28,6 +28,7 @@ const credits_1 = __importDefault(require("./routes/credits"));
 const logs_1 = __importDefault(require("./routes/logs"));
 const metaWebhook_1 = __importDefault(require("./routes/metaWebhook"));
 const webhook360dialog_1 = __importDefault(require("./routes/webhook360dialog"));
+const whatsapp360dialog_1 = __importDefault(require("./routes/whatsapp360dialog"));
 const sseRoutes_1 = __importDefault(require("./routes/sseRoutes"));
 const templatesSync_1 = __importDefault(require("./routes/templatesSync"));
 const templatesDebug_1 = __importDefault(require("./routes/templatesDebug"));
@@ -343,6 +344,7 @@ app.get('/api/debug/session', rateLimit_1.noLimiter, (req, res) => {
     res.json(sessionData);
 });
 app.use('/api/admin', rateLimit_1.adminLimiter, admin_1.default);
+app.use('/api/admin/whatsapp', rateLimit_1.adminLimiter, whatsapp360dialog_1.default);
 app.use('/api/templates', rateLimit_1.readLimiter, templates_1.default);
 app.use('/api/logs', rateLimit_1.readLimiter, logs_1.default);
 app.use('/api/credits', rateLimit_1.readLimiter, credits_1.default);

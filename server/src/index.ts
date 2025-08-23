@@ -35,6 +35,7 @@ import creditsRoutes from './routes/credits';
 import logsRoutes from './routes/logs';
 import metaWebhookRouter from './routes/metaWebhook';
 import webhook360dialogRouter from './routes/webhook360dialog';
+import whatsapp360dialogRouter from './routes/whatsapp360dialog';
 import sseRouter from './routes/sseRoutes';
 import templatesSyncRouter from './routes/templatesSync';
 import templatesDebugRouter from './routes/templatesDebug';
@@ -499,6 +500,9 @@ app.get('/api/debug/session', noLimiter, (req, res) => {
 
 // Admin routes (high limits to prevent "Too many requests" errors)
 app.use('/api/admin', adminLimiter, adminRoutes);
+
+// Admin 360dialog WhatsApp settings routes
+app.use('/api/admin/whatsapp', adminLimiter, whatsapp360dialogRouter);
 
 // Read-heavy routes (generous limits for dashboard functionality)
 app.use('/api/templates', readLimiter, templateRoutes);
