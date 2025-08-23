@@ -1,6 +1,11 @@
 // 360dialog WhatsApp Webhook Receiver - Production Ready
 import { Router, Request, Response } from 'express';
 import express from 'express';
+import { templatesRepo } from '../repos/templatesRepo';
+import { resolve360DialogCredentials } from '../utils/360dialogCredentials';
+import { normalize360DialogStatus } from '../services/wa360Templates';
+import { sseHub } from '../services/sseBroadcaster';
+import { pool } from '../db';
 
 type AnyObj = Record<string, any>;
 
@@ -205,7 +210,10 @@ webhook360dialogRouter.post('/360dialog', express.json(), async (req: Request, r
         }
       }
       
-      // TODO: Add your business logic here
+      // Handle template status updates from 360dialog
+      await processTemplateStatusUpdates(payload);
+      
+      // TODO: Add additional business logic here
       // Examples:
       // - Store messages in database
       // - Update message delivery status
@@ -239,6 +247,169 @@ webhook360dialogRouter.get('/360dialog/debug/recent', (req: Request, res: Respon
     data 
   });
 });
+
+/**
+ * Process template status updates from 360dialog webhook
+ */
+async function processTemplateStatusUpdates(payload: any): Promise<void> {
+  try {
+    if (!payload || typeof payload !== 'object') {
+      return;
+    }
+
+    // Check if this is a template status update webhook
+    // 360dialog sends template updates in different formats, we need to handle:
+    // 1. Direct template status updates
+    // 2. Template approval/rejection notifications
+    if (payload.object === 'whatsapp_business_account' && Array.isArray(payload.entry)) {
+      for (const entry of payload.entry) {
+        if (Array.isArray(entry.changes)) {
+          for (const change of entry.changes) {
+            // Handle template status changes
+            if (change.field === 'message_template_status_update' || change.field === 'template_status_update') {
+              await handleTemplateStatusChange(change.value);
+            }
+            // Handle other template-related changes
+            else if (change.field === 'message_template_quality_update') {
+              await handleTemplateQualityUpdate(change.value);
+            }
+          }
+        }
+      }
+    }
+    
+    // Handle direct template webhook format (if 360dialog sends it differently)
+    else if (payload.template || payload.message_template) {
+      const template = payload.template || payload.message_template;
+      await handleTemplateStatusChange(template);
+    }
+
+  } catch (error) {
+    console.error('❌ [360DIALOG] Error processing template status updates:', error);
+  }
+}
+
+/**
+ * Handle individual template status change
+ */
+async function handleTemplateStatusChange(templateData: any): Promise<void> {
+  try {
+    if (!templateData || !templateData.name) {
+      console.log('⚠️ [360DIALOG] Invalid template data in webhook, skipping');
+      return;
+    }
+
+    const {
+      name,
+      language = 'en_US',
+      status,
+      category,
+      reason,
+      rejected_reason,
+      id,
+      namespace
+    } = templateData;
+
+    const normalizedStatus = normalize360DialogStatus(status);
+    const rejectionReason = rejected_reason || reason;
+
+    console.log(`📝 [360DIALOG] Processing template status update:`, {
+      name,
+      language,
+      status: normalizedStatus,
+      category,
+      reason: rejectionReason,
+      id,
+      namespace
+    });
+
+    // Find which user owns this template by checking our database
+    const existingTemplates = await pool.query(
+      'SELECT user_id FROM templates WHERE name = $1 AND language = $2 LIMIT 1',
+      [name, language]
+    );
+
+    if (existingTemplates.rows.length === 0) {
+      console.log(`⚠️ [360DIALOG] Template ${name} (${language}) not found in our database, skipping update`);
+      return;
+    }
+
+    const userId = existingTemplates.rows[0].user_id;
+
+    // Update template status in database
+    await templatesRepo.upsertStatusAndCategory({
+      userId,
+      name,
+      language,
+      status: normalizedStatus,
+      category: category?.toUpperCase(),
+      reason: rejectionReason,
+      reviewedAt: new Date()
+    });
+
+    console.log(`✅ [360DIALOG] Updated template ${name} (${language}) status to ${normalizedStatus} for user ${userId}`);
+
+    // Emit SSE event to notify the frontend
+    sseHub.emitTemplate(userId, {
+      type: 'template_update',
+      name,
+      language,
+      status: normalizedStatus,
+      category: category?.toUpperCase() || null,
+      reason: rejectionReason || null,
+      at: new Date().toISOString(),
+      source: '360dialog_webhook'
+    });
+
+    console.log(`📡 [360DIALOG] SSE event emitted for template ${name} status change`);
+
+  } catch (error) {
+    console.error('❌ [360DIALOG] Error handling template status change:', error);
+  }
+}
+
+/**
+ * Handle template quality score updates
+ */
+async function handleTemplateQualityUpdate(qualityData: any): Promise<void> {
+  try {
+    if (!qualityData || !qualityData.name) {
+      return;
+    }
+
+    const {
+      name,
+      language = 'en_US',
+      quality_score
+    } = qualityData;
+
+    console.log(`⭐ [360DIALOG] Processing template quality update:`, {
+      name,
+      language,
+      quality_score
+    });
+
+    // Update quality score in database if we have the template
+    const existingTemplates = await pool.query(
+      'SELECT user_id FROM templates WHERE name = $1 AND language = $2 LIMIT 1',
+      [name, language]
+    );
+
+    if (existingTemplates.rows.length > 0) {
+      const userId = existingTemplates.rows[0].user_id;
+      
+      await pool.query(
+        'UPDATE templates SET quality_rating = $1, updated_at = CURRENT_TIMESTAMP WHERE name = $2 AND language = $3 AND user_id = $4',
+        [quality_score?.score?.toUpperCase() || null, name, language, userId]
+      );
+
+      console.log(`✅ [360DIALOG] Updated quality score for template ${name} (${language})`);
+    }
+
+  } catch (error) {
+    console.error('❌ [360DIALOG] Error handling template quality update:', error);
+  }
+}
 
 console.log('🚀 [360DIALOG] Webhook router created successfully');
 

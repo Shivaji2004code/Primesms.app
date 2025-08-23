@@ -40,6 +40,7 @@ import webhook360dialogRouter from './routes/webhook360dialog';
 import whatsapp360dialogRouter from './routes/whatsapp360dialog';
 import sseRouter from './routes/sseRoutes';
 import templatesSyncRouter from './routes/templatesSync';
+import templatesSync360DialogRouter from './routes/templatesSync360Dialog';
 import templatesDebugRouter from './routes/templatesDebug';
 import templatesSyncDirectRouter from './routes/templatesSyncDirect';
 import paymentsRazorpayRoutes from './routes/payments.razorpay.routes';
@@ -513,6 +514,9 @@ app.use('/api/credits', readLimiter, creditsRoutes);
 
 // Template sync routes (moderate limits for sync operations)
 app.use('/', writeLimiter, templatesSyncRouter);
+
+// 360dialog template sync routes
+app.use('/', writeLimiter, templatesSync360DialogRouter);
 
 // Direct template sync routes (emergency sync)
 app.use('/', writeLimiter, templatesSyncDirectRouter);
