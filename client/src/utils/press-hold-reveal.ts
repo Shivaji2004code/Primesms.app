@@ -1,5 +1,5 @@
 // Press and Hold Reveal Utility for Secret Fields
-import { useCallback, useRef, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useEffect, useState } from 'react';
 
 export interface UsePressHoldRevealOptions {
   holdDurationMs?: number;
@@ -179,27 +179,27 @@ export function SecretReveal({
   const hasValue = Boolean(value && value.trim().length > 0);
   
   if (!hasValue) {
-    return <span className={`text-gray-400 ${className}`}>No value set</span>;
+    return React.createElement('span', { 
+      className: `text-gray-400 ${className}` 
+    }, 'No value set');
   }
 
-  return (
-    <span
-      className={`inline-flex items-center gap-2 ${className}`}
-      {...handlers}
-      role="button"
-      tabIndex={0}
-      aria-label={ariaLabel}
-      style={{ userSelect: 'none' }}
-    >
-      <code className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-        {displayValue}
-      </code>
-      
-      {state.canReveal && (
-        <span className="text-xs text-gray-500">
-          {state.isHolding ? 'Hold...' : state.isRevealed ? 'Revealed' : 'Hold to reveal'}
-        </span>
-      )}
-    </span>
-  );
+  return React.createElement('span', {
+    className: `inline-flex items-center gap-2 ${className}`,
+    ...handlers,
+    role: "button",
+    tabIndex: 0,
+    'aria-label': ariaLabel,
+    style: { userSelect: 'none' }
+  }, [
+    React.createElement('code', {
+      key: 'code',
+      className: "font-mono text-sm bg-gray-100 px-2 py-1 rounded"
+    }, displayValue),
+    
+    state.canReveal && React.createElement('span', {
+      key: 'status',
+      className: "text-xs text-gray-500"
+    }, state.isHolding ? 'Hold...' : state.isRevealed ? 'Revealed' : 'Hold to reveal')
+  ]);
 }

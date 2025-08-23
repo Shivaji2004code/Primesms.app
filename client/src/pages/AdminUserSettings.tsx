@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DashboardLayout from '../components/layout/DashboardLayout';
+import WhatsApp360DialogSettings from '../components/WhatsApp360DialogSettings';
 import type { UserWithBusinessInfo, CreateBusinessInfoRequest } from '@/types';
 
 export default function AdminUserSettings() {
@@ -30,6 +31,7 @@ export default function AdminUserSettings() {
     creditBalance: 0
   });
 
+  // Legacy business form data - kept for backward compatibility but not used in 360dialog tab
   const [businessFormData, setBusinessFormData] = useState<CreateBusinessInfoRequest>({
     businessName: '',
     whatsappNumber: '',
@@ -165,20 +167,8 @@ export default function AdminUserSettings() {
         throw new Error(errorData.error || 'Failed to update basic information');
       }
 
-      // Update business info
-      const businessResponse = await fetch(`/api/admin/users/${id}/business-info`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(businessFormData)
-      });
-
-      if (!businessResponse.ok) {
-        const errorData = await businessResponse.json();
-        throw new Error(errorData.error || 'Failed to update business information');
-      }
+      // Business info is now handled by the 360dialog component in the WhatsApp tab
+      // Legacy business info API call removed - 360dialog settings save independently
 
       setSuccessMessage('User settings updated successfully');
       fetchUserDetails(); // Refresh data
@@ -488,168 +478,20 @@ export default function AdminUserSettings() {
             </Card>
           </TabsContent>
 
-          {/* WhatsApp Business Tab */}
+          {/* WhatsApp Business Tab - 360dialog Integration */}
           <TabsContent value="business" className="space-y-6">
             <Card className="shadow-lg">
               <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
                 <CardTitle className="flex items-center space-x-2 text-gray-800">
                   <Building className="h-5 w-5 text-green-600" />
-                  <span>WhatsApp Business Information</span>
+                  <span>WhatsApp Business - 360dialog</span>
                 </CardTitle>
                 <CardDescription>
-                  Configure WhatsApp Business API credentials and settings
+                  Configure 360dialog WhatsApp Business API integration
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Business Name</label>
-                    <Input
-                      value={businessFormData.businessName || ''}
-                      onChange={(e) => handleInputChange('businessName', e.target.value, true)}
-                      placeholder="Your Business Name"
-                      className="focus:ring-green-200"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">WhatsApp Number</label>
-                    <Input
-                      value={businessFormData.whatsappNumber || ''}
-                      onChange={(e) => handleInputChange('whatsappNumber', e.target.value, true)}
-                      placeholder="+1234567890"
-                      className={`transition-all ${formErrors.whatsappNumber ? 'border-red-300 focus:ring-red-200' : 'focus:ring-green-200'}`}
-                    />
-                    {formErrors.whatsappNumber && (
-                      <p className="text-sm text-red-600 mt-2 flex items-center">
-                        <X className="h-4 w-4 mr-1" />
-                        {formErrors.whatsappNumber}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">WhatsApp Number ID</label>
-                    <Input
-                      value={businessFormData.whatsappNumberId || ''}
-                      onChange={(e) => handleInputChange('whatsappNumberId', e.target.value, true)}
-                      placeholder="Meta WhatsApp Number ID"
-                      className="focus:ring-green-200"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">WABA ID</label>
-                    <Input
-                      value={businessFormData.wabaId || ''}
-                      onChange={(e) => handleInputChange('wabaId', e.target.value, true)}
-                      placeholder="WhatsApp Business Account ID"
-                      className="focus:ring-green-200"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Access Token</label>
-                    <div className="relative">
-                      <Input
-                        type={showAccessToken ? 'text' : 'password'}
-                        value={businessFormData.accessToken || ''}
-                        onChange={(e) => handleInputChange('accessToken', e.target.value, true)}
-                        placeholder="Meta API Access Token"
-                        className="pr-12 focus:ring-green-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowAccessToken(!showAccessToken)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        {showAccessToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Webhook URL</label>
-                    <Input
-                      value={businessFormData.webhookUrl || ''}
-                      onChange={(e) => handleInputChange('webhookUrl', e.target.value, true)}
-                      placeholder="https://your-domain.com/webhook"
-                      className={`transition-all ${formErrors.webhookUrl ? 'border-red-300 focus:ring-red-200' : 'focus:ring-green-200'}`}
-                    />
-                    {formErrors.webhookUrl && (
-                      <p className="text-sm text-red-600 mt-2 flex items-center">
-                        <X className="h-4 w-4 mr-1" />
-                        {formErrors.webhookUrl}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Webhook Verify Token</label>
-                    <Input
-                      value={businessFormData.webhookVerifyToken || ''}
-                      onChange={(e) => handleInputChange('webhookVerifyToken', e.target.value, true)}
-                      placeholder="Your webhook verification token"
-                      className="focus:ring-green-200"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">App Secret</label>
-                    <div className="relative">
-                      <Input
-                        type={showAppSecret ? 'text' : 'password'}
-                        value={businessFormData.appSecret || ''}
-                        onChange={(e) => handleInputChange('appSecret', e.target.value, true)}
-                        placeholder="Meta App Secret for webhook signature verification"
-                        className="pr-12 focus:ring-green-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowAppSecret(!showAppSecret)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        {showAppSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Required for webhook signature verification. Get this from Meta Developers Console.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={businessFormData.isActive}
-                    onChange={(e) => handleInputChange('isActive', e.target.checked, true)}
-                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="isActive" className="text-sm font-semibold text-gray-700">
-                    Account Active
-                  </label>
-                  <span className="text-xs text-gray-500">Enable WhatsApp Business API for this user</span>
-                </div>
-
-                {userDetails?.businessInfo && (
-                  <div className="pt-6 border-t bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                      <div>
-                        <span className="font-semibold text-gray-800">Business ID:</span>
-                        <p className="font-mono text-xs bg-gray-100 px-2 py-1 rounded mt-1">{userDetails.businessInfo.id}</p>
-                      </div>
-                      <div>
-                        <span className="font-semibold text-gray-800">Created:</span>
-                        <p>{new Date(userDetails.businessInfo.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <span className="font-semibold text-gray-800">Updated:</span>
-                        <p>{new Date(userDetails.businessInfo.updatedAt).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <CardContent className="p-6">
+                <WhatsApp360DialogSettings userId={id || ''} />
               </CardContent>
             </Card>
           </TabsContent>

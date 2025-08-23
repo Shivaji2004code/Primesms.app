@@ -10,7 +10,7 @@ import {
   WhatsAppSettingsError
 } from '../types/whatsapp-settings';
 import { usePressHoldReveal, getSecretDisplayValue } from '../utils/press-hold-reveal';
-import { useToast } from '../hooks/use-toast';
+import { useToast } from './ui/use-toast';
 
 // UI Components - using existing UI components or fallback to Tailwind
 import { Button } from '../components/ui/button';
