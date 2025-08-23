@@ -115,6 +115,16 @@ export interface TemplateComponent {
   media?: {
     id: string;
   };
+  // 360dialog media format support
+  image?: {
+    id: string;
+  };
+  video?: {
+    id: string;
+  };
+  document?: {
+    id: string;
+  };
 }
 
 export interface Template {

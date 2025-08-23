@@ -54,9 +54,9 @@ interface TemplateState {
   name: string;
   category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
   language: string;
-  headerType: 'none' | 'text' | 'image';
+  headerType: 'none' | 'text' | 'image' | 'video' | 'document';
   headerText: string;
-  headerImage: File | null;
+  headerMedia: File | null;
   bodyText: string;
   footerText: string;
   buttons: TemplateButton[];
@@ -122,7 +122,7 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
     language: 'en_US',
     headerType: 'none',
     headerText: '',
-    headerImage: null,
+    headerMedia: null,
     bodyText: '',
     footerText: '',
     buttons: [],
@@ -137,14 +137,15 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
   const [variableDialog, setVariableDialog] = useState(false);
   const [previewDialog, setPreviewDialog] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
-  const [headerImagePreview, setHeaderImagePreview] = useState<string | null>(null);
+  const [headerMediaPreview, setHeaderMediaPreview] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video' | 'document' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Cleanup effect for preview URLs
   useEffect(() => {
     return () => {
-      if (headerImagePreview) {
-        URL.revokeObjectURL(headerImagePreview);
+      if (headerMediaPreview) {
+        URL.revokeObjectURL(headerMediaPreview);
       }
     };
   }, []);
@@ -157,11 +158,13 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
         updateTemplateData({
           headerType: 'none',
           headerText: '',
-          headerImage: null,
+          headerMedia: null,
           footerText: '',
           buttons: [],
           bodyText: '' // Clear body text since authentication has fixed body format
         });
+        setHeaderMediaPreview(null);
+        setMediaType(null);
       }
     } else if (templateData.category === 'MARKETING') {
       // MARKETING: All components allowed - no cleanup needed
@@ -321,16 +324,24 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
   };
 
   const handleMediaUpload = async (file: File) => {
-    // Validate file size (5MB max)
-    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    // Validate file size (16MB max for video, 5MB for image/document)
+    const maxSize = file.type.startsWith('video/') ? 16 * 1024 * 1024 : 5 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error('File size must be less than 5MB');
+      const maxSizeMB = maxSize / (1024 * 1024);
+      toast.error(`File size must be less than ${maxSizeMB}MB`);
       return;
     }
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload a valid image file');
+    let fileType: 'image' | 'video' | 'document';
+    if (file.type.startsWith('image/')) {
+      fileType = 'image';
+    } else if (file.type.startsWith('video/')) {
+      fileType = 'video';
+    } else if (file.type === 'application/pdf' || file.type.startsWith('application/')) {
+      fileType = 'document';
+    } else {
+      toast.error('Please upload a valid image, video, or document file');
       return;
     }
 
@@ -338,13 +349,14 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
     
     // Create preview URL immediately
     const previewUrl = URL.createObjectURL(file);
-    setHeaderImagePreview(previewUrl);
+    setHeaderMediaPreview(previewUrl);
+    setMediaType(fileType);
     
     // Store the file for later upload with the template
-    updateTemplateData({ headerImage: file });
+    updateTemplateData({ headerMedia: file });
     
     setUploadingMedia(false);
-    toast.success('Image ready for upload');
+    toast.success('Media ready for upload');
   };
 
   // Enhanced save function using the new unified backend endpoint
@@ -393,8 +405,8 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
         // Add header data
         if (templateData.headerType === 'text' && templateData.headerText) {
           formData.append('headerText', templateData.headerText);
-        } else if (templateData.headerType === 'image' && templateData.headerImage) {
-          formData.append('headerMedia', templateData.headerImage);
+        } else if (['image', 'video', 'document'].includes(templateData.headerType) && templateData.headerMedia) {
+          formData.append('headerMedia', templateData.headerMedia);
         }
         
         // Add footer if present
@@ -490,14 +502,38 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
             
             {/* Message Bubble */}
             <div className="bg-white rounded-lg shadow-sm border max-w-[85%] ml-auto">
-              {/* Header Image/Text */}
-              {templateData.headerType === 'image' && headerImagePreview && (
+              {/* Header Media/Text */}
+              {templateData.headerType === 'image' && headerMediaPreview && (
                 <div className="rounded-t-lg overflow-hidden">
                   <img 
-                    src={headerImagePreview} 
+                    src={headerMediaPreview} 
                     alt="Header preview"
                     className="w-full h-auto max-h-40 object-cover"
                   />
+                </div>
+              )}
+              {templateData.headerType === 'video' && headerMediaPreview && (
+                <div className="rounded-t-lg overflow-hidden bg-gray-100">
+                  <video 
+                    src={headerMediaPreview} 
+                    className="w-full h-auto max-h-40 object-cover"
+                    controls
+                  />
+                </div>
+              )}
+              {templateData.headerType === 'document' && templateData.headerMedia && (
+                <div className="rounded-t-lg overflow-hidden bg-gray-50 p-4 border-b">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-red-100 p-2 rounded">
+                      <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M4 18h12V6h-4V2H4v16zm4-12V2l4 4h-4z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{templateData.headerMedia.name}</p>
+                      <p className="text-sm text-gray-500">{(templateData.headerMedia.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  </div>
                 </div>
               )}
               
@@ -736,13 +772,17 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
               <CardContent className="space-y-4">
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Header Type</Label>
-                  <div className="flex gap-2 mt-2">
+                  <div className="grid grid-cols-2 gap-2 mt-2">
                     <Button
                       type="button"
                       variant={templateData.headerType === 'none' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => updateTemplateData({ headerType: 'none', headerText: '', headerImage: null })}
-                      className="flex-1"
+                      onClick={() => {
+                        updateTemplateData({ headerType: 'none', headerText: '', headerMedia: null });
+                        setHeaderMediaPreview(null);
+                        setMediaType(null);
+                      }}
+                      className="col-span-1"
                     >
                       None
                     </Button>
@@ -750,9 +790,13 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
                       type="button"
                       variant={templateData.headerType === 'text' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => updateTemplateData({ headerType: 'text', headerImage: null })}
+                      onClick={() => {
+                        updateTemplateData({ headerType: 'text', headerMedia: null });
+                        setHeaderMediaPreview(null);
+                        setMediaType(null);
+                      }}
                       disabled={templateData.category === 'AUTHENTICATION'}
-                      className="flex-1"
+                      className="col-span-1"
                     >
                       Text
                     </Button>
@@ -760,11 +804,52 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
                       type="button"
                       variant={templateData.headerType === 'image' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => updateTemplateData({ headerType: 'image', headerText: '' })}
+                      onClick={() => {
+                        updateTemplateData({ headerType: 'image', headerText: '' });
+                        if (headerMediaPreview && mediaType !== 'image') {
+                          setHeaderMediaPreview(null);
+                          updateTemplateData({ headerMedia: null });
+                        }
+                        setMediaType('image');
+                      }}
                       disabled={templateData.category === 'AUTHENTICATION'}
-                      className="flex-1"
+                      className="col-span-1"
                     >
-                      Image
+                      🖼️ Image
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={templateData.headerType === 'video' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        updateTemplateData({ headerType: 'video', headerText: '' });
+                        if (headerMediaPreview && mediaType !== 'video') {
+                          setHeaderMediaPreview(null);
+                          updateTemplateData({ headerMedia: null });
+                        }
+                        setMediaType('video');
+                      }}
+                      disabled={templateData.category === 'AUTHENTICATION'}
+                      className="col-span-1"
+                    >
+                      🎥 Video
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={templateData.headerType === 'document' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        updateTemplateData({ headerType: 'document', headerText: '' });
+                        if (headerMediaPreview && mediaType !== 'document') {
+                          setHeaderMediaPreview(null);
+                          updateTemplateData({ headerMedia: null });
+                        }
+                        setMediaType('document');
+                      }}
+                      disabled={templateData.category === 'AUTHENTICATION'}
+                      className="col-span-2"
+                    >
+                      📄 Document
                     </Button>
                   </div>
                 </div>
@@ -788,17 +873,43 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
                   </div>
                 )}
 
-                {templateData.headerType === 'image' && (
+                {['image', 'video', 'document'].includes(templateData.headerType) && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-700">Header Image</Label>
+                    <Label className="text-sm font-medium text-gray-700">
+                      Header {templateData.headerType === 'image' ? 'Image' : templateData.headerType === 'video' ? 'Video' : 'Document'}
+                    </Label>
                     <div className="mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50/50">
-                      {headerImagePreview ? (
+                      {headerMediaPreview ? (
                         <div className="space-y-3">
-                          <img 
-                            src={headerImagePreview} 
-                            alt="Header preview"
-                            className="max-w-full max-h-32 rounded-lg mx-auto border shadow-sm"
-                          />
+                          {templateData.headerType === 'image' && (
+                            <img 
+                              src={headerMediaPreview} 
+                              alt="Header preview"
+                              className="max-w-full max-h-32 rounded-lg mx-auto border shadow-sm"
+                            />
+                          )}
+                          {templateData.headerType === 'video' && (
+                            <video 
+                              src={headerMediaPreview} 
+                              className="max-w-full max-h-32 rounded-lg mx-auto border shadow-sm"
+                              controls
+                            />
+                          )}
+                          {templateData.headerType === 'document' && templateData.headerMedia && (
+                            <div className="bg-white p-4 rounded-lg border shadow-sm max-w-sm mx-auto">
+                              <div className="flex items-center space-x-3">
+                                <div className="bg-red-100 p-2 rounded">
+                                  <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M4 18h12V6h-4V2H4v16zm4-12V2l4 4h-4z"/>
+                                  </svg>
+                                </div>
+                                <div className="text-left">
+                                  <p className="font-medium text-gray-900 text-sm truncate">{templateData.headerMedia.name}</p>
+                                  <p className="text-xs text-gray-500">{(templateData.headerMedia.size / 1024 / 1024).toFixed(2)} MB</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           <div className="flex gap-2 justify-center">
                             <Button
                               type="button"
@@ -808,18 +919,19 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
                               disabled={uploadingMedia}
                             >
                               <Upload className="h-4 w-4 mr-1" />
-                              Change Image
+                              Change {templateData.headerType === 'image' ? 'Image' : templateData.headerType === 'video' ? 'Video' : 'Document'}
                             </Button>
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                if (headerImagePreview) {
-                                  URL.revokeObjectURL(headerImagePreview);
+                                if (headerMediaPreview) {
+                                  URL.revokeObjectURL(headerMediaPreview);
                                 }
-                                setHeaderImagePreview(null);
-                                updateTemplateData({ headerImage: null });
+                                setHeaderMediaPreview(null);
+                                setMediaType(null);
+                                updateTemplateData({ headerMedia: null });
                               }}
                             >
                               <X className="h-4 w-4 mr-1" />
@@ -829,9 +941,19 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <Upload className="h-8 w-8 text-gray-400 mx-auto" />
-                          <p className="text-sm text-gray-600">
-                            Upload an image for the header
+                          {templateData.headerType === 'image' && <Image className="h-12 w-12 mx-auto text-gray-400" />}
+                          {templateData.headerType === 'video' && (
+                            <svg className="h-12 w-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                          {templateData.headerType === 'document' && (
+                            <svg className="h-12 w-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          )}
+                          <p className="text-gray-500 text-sm">
+                            Click to upload {templateData.headerType === 'image' ? 'an image' : templateData.headerType === 'video' ? 'a video' : 'a document'} for the header
                           </p>
                           <Button
                             type="button"
@@ -841,17 +963,23 @@ export default function CreateTemplate({ }: CreateTemplateProps) {
                             disabled={uploadingMedia}
                           >
                             <Upload className="h-4 w-4 mr-1" />
-                            {uploadingMedia ? 'Processing...' : 'Choose Image'}
+                            {uploadingMedia ? 'Processing...' : `Choose ${templateData.headerType === 'image' ? 'Image' : templateData.headerType === 'video' ? 'Video' : 'Document'}`}
                           </Button>
                           <p className="text-xs text-gray-500">
-                            Max file size: 5MB • JPG, PNG supported
+                            {templateData.headerType === 'image' && 'Max file size: 5MB • JPG, PNG supported'}
+                            {templateData.headerType === 'video' && 'Max file size: 16MB • MP4, MOV supported'}
+                            {templateData.headerType === 'document' && 'Max file size: 5MB • PDF supported'}
                           </p>
                         </div>
                       )}
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*"
+                        accept={
+                          templateData.headerType === 'image' ? 'image/*' :
+                          templateData.headerType === 'video' ? 'video/*' :
+                          '.pdf,application/pdf'
+                        }
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
