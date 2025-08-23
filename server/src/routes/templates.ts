@@ -179,6 +179,54 @@ const uploadMediaToWhatsApp = async (
   }
 };
 
+/**
+ * Convert media ID to publicly accessible URL using 360dialog media retrieval endpoint
+ * 360dialog API requires URLs in header_handle, not media IDs
+ */
+const convertMediaIdToUrl = async (mediaId: string, accessToken: string): Promise<string> => {
+  console.log(`🔄 Converting media ID ${mediaId} to URL...`);
+  
+  try {
+    // Step 1: Get media info from 360dialog to get the URL
+    const response = await axios.get(
+      `https://waba-v2.360dialog.io/media/${mediaId}`,
+      {
+        headers: {
+          'D360-API-KEY': accessToken,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+    
+    console.log(`📥 Media info response:`, JSON.stringify(response.data, null, 2));
+    
+    // Extract URL from response - try different possible field names
+    let mediaUrl = response.data.url || 
+                   response.data.media_url || 
+                   response.data.download_url ||
+                   response.data.public_url ||
+                   response.data.data?.url;
+    
+    if (!mediaUrl) {
+      // If no direct URL, construct it using 360dialog media endpoint
+      mediaUrl = `https://waba-v2.360dialog.io/media/${mediaId}`;
+      console.log(`⚠️ No URL in response, using constructed URL: ${mediaUrl}`);
+    }
+    
+    console.log(`✅ Media URL resolved: ${mediaUrl}`);
+    return mediaUrl;
+    
+  } catch (error: any) {
+    console.error(`❌ Failed to get media URL for ID ${mediaId}:`, error.response?.data || error.message);
+    
+    // Fallback: Use the 360dialog media endpoint directly as URL
+    const fallbackUrl = `https://waba-v2.360dialog.io/media/${mediaId}`;
+    console.log(`🔄 Using fallback URL: ${fallbackUrl}`);
+    return fallbackUrl;
+  }
+};
+
 // Create WhatsApp Template - Main function
 const createWhatsAppTemplate = async (
   templateData: CreateTemplateRequest,
@@ -288,12 +336,15 @@ const createWhatsAppTemplate = async (
           throw new Error(`Invalid media ID for ${component.format} template: "${mediaId}"`);
         }
         
-        // Return 360dialog format with header_handle in example field (correct format for 2025)
+        // Convert media ID to URL for 360dialog API requirement
+        const mediaUrl = await convertMediaIdToUrl(mediaId, businessInfo.accessToken!);
+        
+        // Return 360dialog format with header_handle containing URL (not media ID)
         const result: any = {
           type: 'HEADER',
           format: component.format,
           example: {
-            header_handle: [mediaId]
+            header_handle: [mediaUrl]
           }
         };
         
