@@ -34,6 +34,7 @@ import sendRoutes from './routes/send';
 import creditsRoutes from './routes/credits';
 import logsRoutes from './routes/logs';
 import metaWebhookRouter from './routes/metaWebhook';
+import webhook360dialogRouter from './routes/webhook360dialog';
 import sseRouter from './routes/sseRoutes';
 import templatesSyncRouter from './routes/templatesSync';
 import templatesDebugRouter from './routes/templatesDebug';
@@ -231,6 +232,11 @@ app.use('/webhooks', express.json({
 }), metaWebhookRouter);
 
 console.log('[WEBHOOKS] Meta webhook routes mounted at /webhooks/*');
+
+// Mount 360dialog webhook routes (separate mounting for different middleware needs)
+app.use('/webhooks', webhook360dialogRouter);
+
+console.log('[WEBHOOKS] 360dialog webhook routes mounted at /webhooks/360dialog/*');
 
 // Razorpay webhook route (needs raw body parsing)
 app.use('/api/payments/razorpay/webhook', paymentsRazorpayRoutes);

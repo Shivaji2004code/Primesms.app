@@ -27,6 +27,7 @@ const send_1 = __importDefault(require("./routes/send"));
 const credits_1 = __importDefault(require("./routes/credits"));
 const logs_1 = __importDefault(require("./routes/logs"));
 const metaWebhook_1 = __importDefault(require("./routes/metaWebhook"));
+const webhook360dialog_1 = __importDefault(require("./routes/webhook360dialog"));
 const sseRoutes_1 = __importDefault(require("./routes/sseRoutes"));
 const templatesSync_1 = __importDefault(require("./routes/templatesSync"));
 const templatesDebug_1 = __importDefault(require("./routes/templatesDebug"));
@@ -156,6 +157,8 @@ app.use('/webhooks', express_1.default.json({
     }
 }), metaWebhook_1.default);
 console.log('[WEBHOOKS] Meta webhook routes mounted at /webhooks/*');
+app.use('/webhooks', webhook360dialog_1.default);
+console.log('[WEBHOOKS] 360dialog webhook routes mounted at /webhooks/360dialog/*');
 app.use('/api/payments/razorpay/webhook', payments_razorpay_routes_1.default);
 console.log('[PAYMENTS] Razorpay webhook route mounted with raw body parsing');
 app.use(express_1.default.json());
