@@ -641,9 +641,9 @@ router.get('/', async (req, res) => {
           }
         });
       }
-    } catch (syncError) {
+    } catch (syncError: any) {
       // Ignore sync errors, continue with regular template listing
-      console.log(`⚠️ [AUTO-SYNC] Background sync not available for user ${userId}: ${syncError.message}`);
+      console.log(`⚠️ [AUTO-SYNC] Background sync not available for user ${userId}: ${syncError?.message || syncError}`);
     }
 
     // Build the WHERE clause
