@@ -196,18 +196,18 @@ export declare const messageSchemas: {
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
         language: string;
+        templateName: string;
         recipients: {
             number: string;
             variables?: Record<string, string> | undefined;
         }[];
-        templateName: string;
         phoneNumberId: string;
     }, {
+        templateName: string;
         recipients: {
             number: string;
             variables?: Record<string, string> | undefined;
         }[];
-        templateName: string;
         phoneNumberId: string;
         language?: string | undefined;
     }>;

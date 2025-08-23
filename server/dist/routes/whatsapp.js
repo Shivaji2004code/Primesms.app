@@ -14,6 +14,9 @@ const db_1 = __importDefault(require("../db"));
 const auth_1 = require("../middleware/auth");
 const creditSystem_1 = require("../utils/creditSystem");
 const duplicateDetection_1 = require("../middleware/duplicateDetection");
+const wa360Sender_1 = require("../services/wa360Sender");
+const _360dialogCredentials_1 = require("../utils/360dialogCredentials");
+const sender360 = (0, wa360Sender_1.create360Sender)(_360dialogCredentials_1.resolve360DialogCredentials);
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
         const uploadDir = path_1.default.join(__dirname, '../../uploads');
@@ -894,6 +897,91 @@ router.post('/preview-campaign', auth_1.requireAuth, async (req, res) => {
         });
     }
 });
+async function send360DialogMessage(userId, recipient, templateName, language, variables, templateComponents, campaignId, headerMediaId, headerType, mediaId, category) {
+    try {
+        console.log(`🔄 360DIALOG: Starting send for ${recipient} with template ${templateName}`);
+        const duplicateCheck = await (0, duplicateDetection_1.checkAndHandleDuplicate)(userId, templateName, recipient, variables);
+        if (duplicateCheck.isDuplicate) {
+            console.log(`❌ DUPLICATE DETECTED: 360dialog message blocked for ${recipient}`);
+            await db_1.default.query('UPDATE campaign_logs SET status = $1, error_message = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3', ['duplicate', 'Duplicate message blocked', campaignId]);
+            return {
+                success: false,
+                duplicate: true,
+                message: 'Duplicate message blocked'
+            };
+        }
+        const components = {};
+        const bodyParams = [];
+        Object.keys(variables).forEach(key => {
+            const varNum = parseInt(key);
+            if (!isNaN(varNum)) {
+                bodyParams[varNum - 1] = variables[key];
+            }
+        });
+        if (bodyParams.length > 0) {
+            components.bodyParams = bodyParams.filter(p => p !== undefined);
+        }
+        if (headerType === 'STATIC_IMAGE' && (mediaId || headerMediaId)) {
+            components.headerImageIdOrLink = mediaId || headerMediaId;
+        }
+        console.log(`🔍 360DIALOG: Template "${templateName}" components:`, {
+            bodyParams: components.bodyParams?.length || 0,
+            hasHeaderImage: !!components.headerImageIdOrLink,
+            category
+        });
+        const sendResult = await sender360.quickSendTemplate({
+            userId,
+            to: recipient,
+            templateName,
+            languageCode: language || 'en_US',
+            components,
+            timeoutMs: 30000
+        });
+        if (sendResult.success) {
+            console.log(`✅ 360DIALOG: Message sent successfully to ${recipient}, ID: ${sendResult.messageId}`);
+            await db_1.default.query('UPDATE campaign_logs SET status = $1, message_id = $2, sent_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $3', ['sent', sendResult.messageId, campaignId]);
+            try {
+                const templateCategory = category;
+                const { cost } = await (0, creditSystem_1.calculateCreditCost)(userId, templateName, 1);
+                await (0, creditSystem_1.deductCredits)({
+                    userId,
+                    amount: cost,
+                    transactionType: creditSystem_1.CreditTransactionType.DEDUCTION_QUICKSEND,
+                    templateCategory,
+                    templateName,
+                    messageId: sendResult.messageId,
+                    description: `360dialog quicksend to ${recipient}`
+                });
+                console.log(`[CREDIT SYSTEM] Deducted ${cost} credits for 360dialog quicksend. MessageID: ${sendResult.messageId}`);
+            }
+            catch (creditError) {
+                console.error('Credit deduction error for 360dialog quicksend:', creditError);
+            }
+            return {
+                success: true,
+                messageId: sendResult.messageId
+            };
+        }
+        else {
+            console.error(`❌ 360DIALOG: Failed to send to ${recipient}:`, sendResult);
+            await db_1.default.query('UPDATE campaign_logs SET status = $1, error_message = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3', ['failed', `360dialog error: ${sendResult.code}`, campaignId]);
+            return {
+                success: false,
+                error: sendResult.code,
+                details: sendResult.details
+            };
+        }
+    }
+    catch (error) {
+        console.error(`❌ 360DIALOG: Unexpected error sending to ${recipient}:`, error);
+        await db_1.default.query('UPDATE campaign_logs SET status = $1, error_message = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3', ['failed', `Unexpected error: ${error.message}`, campaignId]);
+        return {
+            success: false,
+            error: 'UNEXPECTED_ERROR',
+            details: error.message
+        };
+    }
+}
 router.post('/quick-send', auth_1.requireAuth, upload.single('headerImage'), async (req, res) => {
     try {
         const userId = req.session.user.id;
@@ -990,14 +1078,20 @@ router.post('/quick-send', auth_1.requireAuth, upload.single('headerImage'), asy
                 }
             });
         }
-        const numberResult = await db_1.default.query('SELECT access_token, business_name FROM user_business_info WHERE user_id = $1 AND whatsapp_number_id = $2 AND is_active = true', [userId, phone_number_id]);
-        if (numberResult.rows.length === 0) {
+        const dialogResult = await db_1.default.query('SELECT channel_id, api_key, business_name FROM user_business_info WHERE user_id = $1 AND provider = $2 AND is_active = true', [userId, '360dialog']);
+        if (dialogResult.rows.length === 0) {
             return res.status(403).json({
                 success: false,
-                error: 'WhatsApp number not found or access denied'
+                error: '360dialog configuration not found. Please configure your 360dialog API settings in the admin panel.'
             });
         }
-        const { access_token } = numberResult.rows[0];
+        const { channel_id, api_key } = dialogResult.rows[0];
+        if (!channel_id || !api_key) {
+            return res.status(403).json({
+                success: false,
+                error: '360dialog API key or Channel ID not configured. Please complete your 360dialog setup in the admin panel.'
+            });
+        }
         const templateResult = await db_1.default.query('SELECT components, header_media_id, header_type, header_media_url, header_handle, media_id, category FROM templates WHERE user_id = $1 AND name = $2 AND language = $3', [userId, template_name, language]);
         if (templateResult.rows.length === 0) {
             return res.status(404).json({
@@ -1008,42 +1102,26 @@ router.post('/quick-send', auth_1.requireAuth, upload.single('headerImage'), asy
         const templateDetails = templateResult.rows[0];
         let uploadedImageMediaId = null;
         if (templateDetails.header_type === 'STATIC_IMAGE') {
-            console.log('🖼️ Template has image header - checking for uploaded image');
+            console.log('🖼️ 360DIALOG: Template has image header - using existing media ID');
             if (req.file) {
-                console.log('📤 Image uploaded for template message, uploading to WhatsApp...');
-                try {
-                    const FormData = require('form-data');
-                    const form = new FormData();
-                    form.append('file', fs_1.default.createReadStream(req.file.path));
-                    form.append('type', req.file.mimetype);
-                    form.append('messaging_product', 'whatsapp');
-                    const mediaResponse = await axios_1.default.post(`https://graph.facebook.com/v21.0/${phone_number_id}/media`, form, {
-                        headers: {
-                            Authorization: `Bearer ${access_token}`,
-                            ...form.getHeaders()
-                        }
-                    });
-                    uploadedImageMediaId = mediaResponse.data.id;
-                    console.log('✅ Image uploaded successfully, media_id:', uploadedImageMediaId);
-                    fs_1.default.unlinkSync(req.file.path);
-                }
-                catch (uploadError) {
-                    console.error('❌ Image upload failed:', uploadError.response?.data || uploadError.message);
-                    if (req.file && fs_1.default.existsSync(req.file.path)) {
-                        fs_1.default.unlinkSync(req.file.path);
-                    }
+                console.log('⚠️ 360DIALOG: File uploads not yet implemented for 360dialog - using template media ID instead');
+                fs_1.default.unlinkSync(req.file.path);
+                uploadedImageMediaId = templateDetails.media_id || templateDetails.header_media_id;
+                if (!uploadedImageMediaId) {
                     return res.status(400).json({
                         success: false,
-                        error: 'Failed to upload image to WhatsApp',
-                        details: uploadError.response?.data || uploadError.message
+                        error: 'Template requires an image header, but no media ID is configured. Please configure template media in admin panel.'
                     });
                 }
             }
             else {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Template requires an image header, but no image was uploaded. Please upload an image.'
-                });
+                uploadedImageMediaId = templateDetails.media_id || templateDetails.header_media_id;
+                if (!uploadedImageMediaId) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Template requires an image header, but no media ID is configured. Please configure template media in admin panel.'
+                    });
+                }
             }
         }
         const components = templateDetails.components;
@@ -1186,7 +1264,7 @@ router.post('/quick-send', auth_1.requireAuth, upload.single('headerImage'), asy
                 for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
                     const batch = batches[batchIndex];
                     console.log(`📤 QUICK-SEND: Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} messages)`);
-                    const batchPromises = batch.map(campaignEntry => sendTemplateMessage(phone_number_id, access_token, campaignEntry.recipient, template_name, language, variables, templateResult.rows[0].components, campaignEntry.id.toString(), userId, templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, templateResult.rows[0].header_media_url, templateResult.rows[0].header_handle, uploadedImageMediaId || templateResult.rows[0].media_id, templateResult.rows[0].category));
+                    const batchPromises = batch.map(campaignEntry => send360DialogMessage(userId, campaignEntry.recipient, template_name, language, variables, templateResult.rows[0].components, campaignEntry.id.toString(), templateResult.rows[0].header_media_id, templateResult.rows[0].header_type, uploadedImageMediaId || templateResult.rows[0].media_id, templateResult.rows[0].category));
                     const batchResults = await Promise.allSettled(batchPromises);
                     batchResults.forEach((result, index) => {
                         const campaignEntry = batch[index];
