@@ -632,6 +632,26 @@ app.get('/templates', requireAuthWithRedirect, (req, res) => {
 });
 
 // ============================================================================
+// STATIC ASSETS SERVING
+// ============================================================================
+
+// Serve template sample assets (for 360dialog template creation)
+const assetsDir = path.join(__dirname, '../public/assets');
+app.use('/assets', express.static(assetsDir, {
+  maxAge: '7d',
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+    } else if (filePath.endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
+    } else if (filePath.endsWith('.mp4')) {
+      res.setHeader('Content-Type', 'video/mp4');
+    }
+    res.setHeader('Cache-Control', 'public, max-age=604800'); // 7 days
+  }
+}));
+
+// ============================================================================
 // SPA FALLBACK (USING ALREADY DETECTED CLIENT DIR FROM TOP OF FILE)
 // ============================================================================
 

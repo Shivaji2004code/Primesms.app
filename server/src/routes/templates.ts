@@ -180,51 +180,18 @@ const uploadMediaToWhatsApp = async (
 };
 
 /**
- * Convert media ID to publicly accessible URL using 360dialog media retrieval endpoint
- * 360dialog API requires URLs in header_handle, not media IDs
+ * Get sample URL for template creation - hardcoded URLs for different media types
+ * 360dialog requires public HTTPS URLs in header_handle, not media IDs
+ * Media IDs are only used when sending messages, not for template creation
  */
-const convertMediaIdToUrl = async (mediaId: string, accessToken: string): Promise<string> => {
-  console.log(`🔄 Converting media ID ${mediaId} to URL...`);
+const getSampleUrlForTemplate = (format: string): string => {
+  const defaultSampleUrls = {
+    'IMAGE': 'https://primesms.app/assets/template-sample-image.png',
+    'VIDEO': 'https://primesms.app/assets/template-sample-video.mp4', 
+    'DOCUMENT': 'https://primesms.app/assets/template-sample-document.pdf'
+  };
   
-  try {
-    // Step 1: Get media info from 360dialog to get the URL
-    const response = await axios.get(
-      `https://waba-v2.360dialog.io/media/${mediaId}`,
-      {
-        headers: {
-          'D360-API-KEY': accessToken,
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      }
-    );
-    
-    console.log(`📥 Media info response:`, JSON.stringify(response.data, null, 2));
-    
-    // Extract URL from response - try different possible field names
-    let mediaUrl = response.data.url || 
-                   response.data.media_url || 
-                   response.data.download_url ||
-                   response.data.public_url ||
-                   response.data.data?.url;
-    
-    if (!mediaUrl) {
-      // If no direct URL, construct it using 360dialog media endpoint
-      mediaUrl = `https://waba-v2.360dialog.io/media/${mediaId}`;
-      console.log(`⚠️ No URL in response, using constructed URL: ${mediaUrl}`);
-    }
-    
-    console.log(`✅ Media URL resolved: ${mediaUrl}`);
-    return mediaUrl;
-    
-  } catch (error: any) {
-    console.error(`❌ Failed to get media URL for ID ${mediaId}:`, error.response?.data || error.message);
-    
-    // Fallback: Use the 360dialog media endpoint directly as URL
-    const fallbackUrl = `https://waba-v2.360dialog.io/media/${mediaId}`;
-    console.log(`🔄 Using fallback URL: ${fallbackUrl}`);
-    return fallbackUrl;
-  }
+  return defaultSampleUrls[format as keyof typeof defaultSampleUrls] || defaultSampleUrls.IMAGE;
 };
 
 // Create WhatsApp Template - Main function
@@ -317,7 +284,18 @@ const createWhatsAppTemplate = async (
         // Priority 2: Backward compatibility with header_handle
         else if (component.example?.header_handle) {
           if (Array.isArray(component.example.header_handle)) {
-            mediaId = component.example.header_handle[0] || '';
+            const handle = component.example.header_handle[0] || '';
+            // If it's already a URL, use it directly
+            if (handle.startsWith('http')) {
+              return {
+                type: 'HEADER',
+                format: component.format,
+                example: {
+                  header_handle: [handle]
+                }
+              };
+            }
+            mediaId = handle;
           } else if (typeof component.example.header_handle === 'string') {
             mediaId = component.example.header_handle;
           }
@@ -336,15 +314,18 @@ const createWhatsAppTemplate = async (
           throw new Error(`Invalid media ID for ${component.format} template: "${mediaId}"`);
         }
         
-        // Convert media ID to URL for 360dialog API requirement
-        const mediaUrl = await convertMediaIdToUrl(mediaId, businessInfo.accessToken!);
+        // Get sample URL for template approval (hardcoded URLs)
+        const sampleUrl = getSampleUrlForTemplate(component.format);
         
-        // Return 360dialog format with header_handle containing URL (not media ID)
+        console.log(`🔄 Template Creation: Using sample URL: ${sampleUrl}`);
+        console.log(`💾 Message Sending: Will use media_id: ${mediaId}`);
+        
+        // Return 360dialog format with header_handle containing sample URL (not media ID)
         const result: any = {
           type: 'HEADER',
           format: component.format,
           example: {
-            header_handle: [mediaUrl]
+            header_handle: [sampleUrl]
           }
         };
         
@@ -382,7 +363,7 @@ const createWhatsAppTemplate = async (
   
   // UTILITY: All components allowed
   else if (templateData.category === 'UTILITY') {
-    processedComponents = templateData.components.map(component => {
+    processedComponents = await Promise.all(templateData.components.map(async (component) => {
       // Handle MEDIA headers (IMAGE, VIDEO, DOCUMENT) for UTILITY
       if (component.type === 'HEADER' && component.format && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(component.format)) {
         let mediaId = '';
@@ -398,7 +379,18 @@ const createWhatsAppTemplate = async (
         // Priority 2: Backward compatibility with header_handle
         else if (component.example?.header_handle) {
           if (Array.isArray(component.example.header_handle)) {
-            mediaId = component.example.header_handle[0] || '';
+            const handle = component.example.header_handle[0] || '';
+            // If it's already a URL, use it directly
+            if (handle.startsWith('http')) {
+              return {
+                type: 'HEADER',
+                format: component.format,
+                example: {
+                  header_handle: [handle]
+                }
+              };
+            }
+            mediaId = handle;
           } else if (typeof component.example.header_handle === 'string') {
             mediaId = component.example.header_handle;
           }
@@ -417,19 +409,20 @@ const createWhatsAppTemplate = async (
           throw new Error(`Invalid media ID for ${component.format} template: "${mediaId}"`);
         }
         
-        // Return 360dialog format based on media type
+        // Get sample URL for template approval (hardcoded URLs)
+        const sampleUrl = getSampleUrlForTemplate(component.format);
+        
+        console.log(`🔄 UTILITY Template Creation: Using sample URL: ${sampleUrl}`);
+        console.log(`💾 UTILITY Message Sending: Will use media_id: ${mediaId}`);
+        
+        // Return 360dialog format with header_handle containing sample URL (not media ID)
         const result: any = {
           type: 'HEADER',
-          format: component.format
+          format: component.format,
+          example: {
+            header_handle: [sampleUrl]
+          }
         };
-        
-        if (component.format === 'IMAGE') {
-          result.image = { id: mediaId };
-        } else if (component.format === 'VIDEO') {
-          result.video = { id: mediaId };
-        } else if (component.format === 'DOCUMENT') {
-          result.document = { id: mediaId };
-        }
         
         return result;
       }
@@ -458,7 +451,7 @@ const createWhatsAppTemplate = async (
       }
       
       return component;
-    });
+    }));
     
     console.log('📎 UTILITY template: All components allowed');
   }

@@ -426,6 +426,22 @@ app.use('/api', (req, res) => {
 app.get('/templates', auth_2.requireAuthWithRedirect, (req, res) => {
     res.redirect('/api/templates');
 });
+const assetsDir = path_1.default.join(__dirname, '../public/assets');
+app.use('/assets', express_1.default.static(assetsDir, {
+    maxAge: '7d',
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+            res.setHeader('Content-Type', 'image/jpeg');
+        }
+        else if (filePath.endsWith('.pdf')) {
+            res.setHeader('Content-Type', 'application/pdf');
+        }
+        else if (filePath.endsWith('.mp4')) {
+            res.setHeader('Content-Type', 'video/mp4');
+        }
+        res.setHeader('Cache-Control', 'public, max-age=604800');
+    }
+}));
 app.use(express_1.default.static(clientDir, {
     index: false,
     maxAge: '1y',

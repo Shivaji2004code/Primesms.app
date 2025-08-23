@@ -129,35 +129,13 @@ const uploadMediaToWhatsApp = async (filePath, fileName, mimeType, businessInfo)
         throw new Error(`Media upload error: ${error.response?.data?.error?.message || error.message}`);
     }
 };
-const convertMediaIdToUrl = async (mediaId, accessToken) => {
-    console.log(`🔄 Converting media ID ${mediaId} to URL...`);
-    try {
-        const response = await axios_1.default.get(`https://waba-v2.360dialog.io/media/${mediaId}`, {
-            headers: {
-                'D360-API-KEY': accessToken,
-                'Content-Type': 'application/json'
-            },
-            timeout: 10000
-        });
-        console.log(`📥 Media info response:`, JSON.stringify(response.data, null, 2));
-        let mediaUrl = response.data.url ||
-            response.data.media_url ||
-            response.data.download_url ||
-            response.data.public_url ||
-            response.data.data?.url;
-        if (!mediaUrl) {
-            mediaUrl = `https://waba-v2.360dialog.io/media/${mediaId}`;
-            console.log(`⚠️ No URL in response, using constructed URL: ${mediaUrl}`);
-        }
-        console.log(`✅ Media URL resolved: ${mediaUrl}`);
-        return mediaUrl;
-    }
-    catch (error) {
-        console.error(`❌ Failed to get media URL for ID ${mediaId}:`, error.response?.data || error.message);
-        const fallbackUrl = `https://waba-v2.360dialog.io/media/${mediaId}`;
-        console.log(`🔄 Using fallback URL: ${fallbackUrl}`);
-        return fallbackUrl;
-    }
+const getSampleUrlForTemplate = (format) => {
+    const defaultSampleUrls = {
+        'IMAGE': 'https://primesms.app/assets/template-sample-image.png',
+        'VIDEO': 'https://primesms.app/assets/template-sample-video.mp4',
+        'DOCUMENT': 'https://primesms.app/assets/template-sample-document.pdf'
+    };
+    return defaultSampleUrls[format] || defaultSampleUrls.IMAGE;
 };
 const createWhatsAppTemplate = async (templateData, businessInfo, customExamples = {}) => {
     console.log('\n🚀 CREATING WHATSAPP TEMPLATE');
@@ -217,7 +195,17 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
                 }
                 else if (component.example?.header_handle) {
                     if (Array.isArray(component.example.header_handle)) {
-                        mediaId = component.example.header_handle[0] || '';
+                        const handle = component.example.header_handle[0] || '';
+                        if (handle.startsWith('http')) {
+                            return {
+                                type: 'HEADER',
+                                format: component.format,
+                                example: {
+                                    header_handle: [handle]
+                                }
+                            };
+                        }
+                        mediaId = handle;
                     }
                     else if (typeof component.example.header_handle === 'string') {
                         mediaId = component.example.header_handle;
@@ -232,12 +220,14 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
                 if (!mediaId || typeof mediaId !== 'string' || mediaId.trim().length === 0) {
                     throw new Error(`Invalid media ID for ${component.format} template: "${mediaId}"`);
                 }
-                const mediaUrl = await convertMediaIdToUrl(mediaId, businessInfo.accessToken);
+                const sampleUrl = getSampleUrlForTemplate(component.format);
+                console.log(`🔄 Template Creation: Using sample URL: ${sampleUrl}`);
+                console.log(`💾 Message Sending: Will use media_id: ${mediaId}`);
                 const result = {
                     type: 'HEADER',
                     format: component.format,
                     example: {
-                        header_handle: [mediaUrl]
+                        header_handle: [sampleUrl]
                     }
                 };
                 return result;
@@ -262,7 +252,7 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
         console.log('📢 MARKETING template: All components allowed');
     }
     else if (templateData.category === 'UTILITY') {
-        processedComponents = templateData.components.map(component => {
+        processedComponents = await Promise.all(templateData.components.map(async (component) => {
             if (component.type === 'HEADER' && component.format && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(component.format)) {
                 let mediaId = '';
                 if (component.format === 'IMAGE' && component.image?.id) {
@@ -276,7 +266,17 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
                 }
                 else if (component.example?.header_handle) {
                     if (Array.isArray(component.example.header_handle)) {
-                        mediaId = component.example.header_handle[0] || '';
+                        const handle = component.example.header_handle[0] || '';
+                        if (handle.startsWith('http')) {
+                            return {
+                                type: 'HEADER',
+                                format: component.format,
+                                example: {
+                                    header_handle: [handle]
+                                }
+                            };
+                        }
+                        mediaId = handle;
                     }
                     else if (typeof component.example.header_handle === 'string') {
                         mediaId = component.example.header_handle;
@@ -291,19 +291,16 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
                 if (!mediaId || typeof mediaId !== 'string' || mediaId.trim().length === 0) {
                     throw new Error(`Invalid media ID for ${component.format} template: "${mediaId}"`);
                 }
+                const sampleUrl = getSampleUrlForTemplate(component.format);
+                console.log(`🔄 UTILITY Template Creation: Using sample URL: ${sampleUrl}`);
+                console.log(`💾 UTILITY Message Sending: Will use media_id: ${mediaId}`);
                 const result = {
                     type: 'HEADER',
-                    format: component.format
+                    format: component.format,
+                    example: {
+                        header_handle: [sampleUrl]
+                    }
                 };
-                if (component.format === 'IMAGE') {
-                    result.image = { id: mediaId };
-                }
-                else if (component.format === 'VIDEO') {
-                    result.video = { id: mediaId };
-                }
-                else if (component.format === 'DOCUMENT') {
-                    result.document = { id: mediaId };
-                }
                 return result;
             }
             if (component.type === 'HEADER' && component.format === 'TEXT' && component.text) {
@@ -322,7 +319,7 @@ const createWhatsAppTemplate = async (templateData, businessInfo, customExamples
                 return component;
             }
             return component;
-        });
+        }));
         console.log('📎 UTILITY template: All components allowed');
     }
     let namespace;
