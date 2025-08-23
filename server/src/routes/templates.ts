@@ -394,12 +394,23 @@ const createWhatsAppTemplate = async (
     console.log('📎 UTILITY template: All components allowed');
   }
 
-  // FIXED: Build payload without namespace (not required for Cloud API)
+  // Get namespace for 360dialog (required for template creation)
+  let namespace: string;
+  try {
+    namespace = await getNamespace(businessInfo.wabaId!, businessInfo.accessToken!);
+  } catch (error) {
+    console.error('❌ Failed to get namespace, using fallback');
+    // Use a fallback or throw error - namespace is required for 360dialog
+    throw new Error('Namespace is required for 360dialog template creation');
+  }
+
+  // Build payload with required namespace for 360dialog
   const payload: any = {
     name: templateData.name,
     language: templateData.language || 'en_US',
     category: templateData.category,
     components: processedComponents,
+    namespace: namespace,
     allow_category_change: templateData.allow_category_change ?? true
   };
 

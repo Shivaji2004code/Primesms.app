@@ -40,9 +40,31 @@ export async function fetchAllTemplatesFrom360Dialog(
       }
     );
     
-    const templates = response.data?.data || response.data?.templates || response.data || [];
+    console.log('🔍 [360DIALOG] Raw API response:', JSON.stringify(response.data, null, 2));
+    
+    // Handle different possible response formats from 360dialog
+    let templates = [];
+    
+    if (response.data?.templates && Array.isArray(response.data.templates)) {
+      templates = response.data.templates;
+    } else if (response.data?.data && Array.isArray(response.data.data)) {
+      templates = response.data.data;
+    } else if (Array.isArray(response.data)) {
+      templates = response.data;
+    } else if (response.data?.waba_templates && Array.isArray(response.data.waba_templates)) {
+      templates = response.data.waba_templates;
+    } else {
+      console.log('⚠️ [360DIALOG] Unexpected response format, treating as empty array');
+      templates = [];
+    }
     
     console.log(`✅ [360DIALOG] Successfully fetched ${templates.length} templates from 360dialog`);
+    
+    // Ensure templates is an array before mapping
+    if (!Array.isArray(templates)) {
+      console.error('❌ [360DIALOG] Templates is not an array:', typeof templates, templates);
+      return [];
+    }
     
     // Transform 360dialog format to our standard format
     return templates.map((template: any) => ({
