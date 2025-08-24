@@ -190,6 +190,9 @@ webhook360dialogRouter.post('/360dialog', express.json(), async (req: Request, r
                     timestamp: status.timestamp,
                     recipient_id: status.recipient_id
                   });
+                  
+                  // Process message status update
+                  await processMessageStatusUpdate(status);
                 }
               }
               
@@ -409,6 +412,150 @@ async function handleTemplateQualityUpdate(qualityData: any): Promise<void> {
   } catch (error) {
     console.error('❌ [360DIALOG] Error handling template quality update:', error);
   }
+}
+
+/**
+ * Process message status updates from 360dialog webhook
+ * Updates campaign_logs with delivery status based on message_id
+ */
+async function processMessageStatusUpdate(statusData: any): Promise<void> {
+  try {
+    if (!statusData || !statusData.id) {
+      console.log('⚠️ [360DIALOG] Invalid status data - missing message ID');
+      return;
+    }
+
+    const {
+      id: messageId,
+      status,
+      timestamp,
+      recipient_id,
+      errors,
+      pricing
+    } = statusData;
+
+    // Normalize status from 360dialog to our internal status
+    const normalizedStatus = normalizeMessageStatus(status);
+    
+    console.log(`📋 [360DIALOG] Processing message status update:`, {
+      messageId,
+      status,
+      normalizedStatus,
+      timestamp,
+      recipient_id
+    });
+
+    // Find campaign_logs entry by message_id
+    const campaignResult = await pool.query(
+      'SELECT id, user_id, status as current_status, recipient_number FROM campaign_logs WHERE message_id = $1 LIMIT 1',
+      [messageId]
+    );
+
+    if (campaignResult.rows.length === 0) {
+      console.log(`⚠️ [360DIALOG] Message ID ${messageId} not found in campaign_logs - might be bulk send or external message`);
+      return;
+    }
+
+    const campaign = campaignResult.rows[0];
+    const campaignId = campaign.id;
+    const userId = campaign.user_id;
+    const currentStatus = campaign.current_status;
+
+    // Only update if status is progressing forward or if there's an error
+    const shouldUpdate = shouldUpdateStatus(currentStatus, normalizedStatus);
+    
+    if (!shouldUpdate) {
+      console.log(`⚠️ [360DIALOG] Status update ignored - ${currentStatus} -> ${normalizedStatus} not allowed`);
+      return;
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      status: normalizedStatus,
+      updated_at: new Date()
+    };
+
+    // Set timestamps based on status
+    if (normalizedStatus === 'delivered' && !campaign.delivered_at) {
+      updateData.delivered_at = timestamp ? new Date(parseInt(timestamp) * 1000) : new Date();
+    }
+
+    // Handle errors
+    if (errors && errors.length > 0) {
+      const errorMessages = errors.map((err: any) => `${err.code}: ${err.title || err.message || 'Unknown error'}`).join('; ');
+      updateData.error_message = errorMessages;
+      console.log(`❌ [360DIALOG] Message errors:`, errorMessages);
+    }
+
+    // Update campaign_logs
+    const updateFields = Object.keys(updateData).map((key, index) => `${key} = $${index + 2}`).join(', ');
+    const updateValues = [campaignId, ...Object.values(updateData)];
+    
+    await pool.query(
+      `UPDATE campaign_logs SET ${updateFields} WHERE id = $1`,
+      updateValues
+    );
+
+    console.log(`✅ [360DIALOG] Updated campaign ${campaignId} status: ${currentStatus} -> ${normalizedStatus}`);
+
+    // Emit SSE event for real-time updates
+    sseHub.emitMessage(userId, {
+      type: 'message_status_update',
+      campaignId,
+      messageId,
+      status: normalizedStatus,
+      recipient: campaign.recipient_number,
+      timestamp: timestamp ? new Date(parseInt(timestamp) * 1000).toISOString() : new Date().toISOString(),
+      source: '360dialog_webhook'
+    });
+
+    console.log(`📡 [360DIALOG] SSE event emitted for message status update`);
+
+  } catch (error) {
+    console.error('❌ [360DIALOG] Error processing message status update:', error);
+  }
+}
+
+/**
+ * Normalize 360dialog message status to our internal status values
+ */
+function normalizeMessageStatus(dialogStatus: string): string {
+  const statusMap: Record<string, string> = {
+    'sent': 'sent',
+    'delivered': 'delivered', 
+    'read': 'read',
+    'failed': 'failed',
+    'undelivered': 'failed'
+  };
+
+  return statusMap[dialogStatus?.toLowerCase()] || 'pending';
+}
+
+/**
+ * Check if status update should be applied based on current and new status
+ */
+function shouldUpdateStatus(currentStatus: string, newStatus: string): boolean {
+  // Status progression hierarchy
+  const statusHierarchy = {
+    'pending': 0,
+    'processing': 1,
+    'sent': 2,
+    'delivered': 3,
+    'read': 4,
+    'failed': -1,
+    'completed': 5
+  };
+
+  const currentLevel = statusHierarchy[currentStatus] || 0;
+  const newLevel = statusHierarchy[newStatus] || 0;
+
+  // Always allow failed status
+  if (newStatus === 'failed') {
+    return true;
+  }
+
+  // Allow progression forward or same level (for duplicate notifications)
+  return newLevel >= currentLevel;
 }
 
 console.log('🚀 [360DIALOG] Webhook router created successfully');

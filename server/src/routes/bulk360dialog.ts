@@ -199,7 +199,7 @@ router.post('/send', async (req, res) => {
       }
     }
 
-    // Log campaign
+    // Log campaign with individual message records
     await logBulkCampaign(userId, template, recipients.length, bulkResult, businessInfo.channel_id);
 
     // Return detailed results
@@ -409,7 +409,7 @@ async function fetchTemplate(userId: string, templateName: string): Promise<{
 }
 
 /**
- * Log bulk campaign results
+ * Log bulk campaign results with individual message tracking
  */
 async function logBulkCampaign(
   userId: string,
@@ -421,24 +421,37 @@ async function logBulkCampaign(
   try {
     const campaignName = `BULK360_${template.name}_${Date.now()}`;
     
-    await pool.query(`
-      INSERT INTO campaign_logs (
-        user_id, campaign_name, template_used, phone_number_id, 
-        status, total_recipients, successful_sends, failed_sends,
-        sent_at, created_at, updated_at
-      )
-      VALUES ($1, $2, $3, $4, 'completed', $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `, [
-      userId,
-      campaignName,
-      template.name,
-      channelId,
-      totalRecipients,
-      bulkResult.succeeded,
-      bulkResult.failed
-    ]);
+    // Create individual campaign_logs entries for each recipient
+    const insertPromises = bulkResult.results.map((result: any) => {
+      const messageId = result.success ? result.messageId : null;
+      const status = result.success ? 'sent' : 'failed';
+      const errorMessage = !result.success ? `${result.code}: ${getErrorMessage(result.code)}` : null;
+      
+      return pool.query(`
+        INSERT INTO campaign_logs (
+          user_id, campaign_name, template_used, phone_number_id, recipient_number,
+          message_id, status, total_recipients, successful_sends, failed_sends,
+          error_message, sent_at, created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 1, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `, [
+        userId,
+        `${campaignName}_${result.to}`, // Unique campaign name per recipient
+        template.name,
+        channelId,
+        result.to,
+        messageId,
+        status,
+        result.success ? 1 : 0, // successful_sends
+        result.success ? 0 : 1, // failed_sends
+        errorMessage
+      ]);
+    });
     
-    logger.info(`✅ Logged bulk campaign: ${campaignName} (${bulkResult.succeeded}/${totalRecipients} sent)`);
+    // Execute all inserts
+    await Promise.all(insertPromises);
+    
+    logger.info(`✅ Logged bulk campaign with individual records: ${campaignName} (${bulkResult.succeeded}/${totalRecipients} sent)`);
     
   } catch (error) {
     logger.error('❌ Failed to log bulk campaign:', error);
