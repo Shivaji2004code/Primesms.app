@@ -499,7 +499,7 @@ async function processMessageStatusUpdate(statusData: any): Promise<void> {
     console.log(`✅ [360DIALOG] Updated campaign ${campaignId} status: ${currentStatus} -> ${normalizedStatus}`);
 
     // Emit SSE event for real-time updates
-    sseHub.emitMessage(userId, {
+    sseHub.emitReport(userId, {
       type: 'message_status_update',
       campaignId,
       messageId,
@@ -536,7 +536,7 @@ function normalizeMessageStatus(dialogStatus: string): string {
  */
 function shouldUpdateStatus(currentStatus: string, newStatus: string): boolean {
   // Status progression hierarchy
-  const statusHierarchy = {
+  const statusHierarchy: Record<string, number> = {
     'pending': 0,
     'processing': 1,
     'sent': 2,
