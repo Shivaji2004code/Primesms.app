@@ -44,6 +44,7 @@ import templatesSync360DialogRouter from './routes/templatesSync360Dialog';
 import templatesDebugRouter from './routes/templatesDebug';
 import templatesSyncDirectRouter from './routes/templatesSyncDirect';
 import paymentsRazorpayRoutes from './routes/payments.razorpay.routes';
+import pricingRoutes from './routes/pricing.routes';
 
 // Import middleware
 import { requireAuthWithRedirect } from './middleware/auth';
@@ -503,6 +504,9 @@ app.get('/api/debug/session', noLimiter, (req, res) => {
 
 // Admin routes (high limits to prevent "Too many requests" errors)
 app.use('/api/admin', adminLimiter, adminRoutes);
+
+// Admin pricing routes
+app.use('/api/admin/pricing', adminLimiter, pricingRoutes);
 
 // Admin 360dialog WhatsApp settings routes
 app.use('/api/admin/whatsapp', adminLimiter, whatsapp360dialogRouter);

@@ -9,6 +9,8 @@ client/.env.*
 # Dependencies
 **/node_modules
 **/dist
+server/client-build
+client/dist
 
 # Build artifacts  
 */build
@@ -19,6 +21,10 @@ client/.env.*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+server.log
+client.log
+client_dev.log
+logs/
 
 # Runtime data
 pids

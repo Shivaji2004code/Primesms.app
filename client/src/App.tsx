@@ -19,6 +19,7 @@ import AdminUserSettings from './pages/AdminUserSettings';
 import AdminUserWallet from './pages/AdminUserWallet';
 import AdminUserTemplates from './pages/AdminUserTemplates';
 import AdminLogCleanup from './pages/AdminLogCleanup';
+import AdminPricing from './pages/AdminPricing';
 import NotificationTest from './pages/NotificationTest';
 import UserDashboard from './pages/UserDashboard';
 import ManageTemplatesWrapper from './components/ManageTemplatesWrapper';
@@ -106,6 +107,14 @@ function App() {
             element={
               <AdminRoute>
                 <AdminLogCleanup />
+              </AdminRoute>
+            } 
+          />
+          <Route 
+            path="/admin/pricing" 
+            element={
+              <AdminRoute>
+                <AdminPricing />
               </AdminRoute>
             } 
           />

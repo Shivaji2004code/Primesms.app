@@ -4,7 +4,7 @@
 # ============================================================================
 
 # Stage 1: Build the client (React/Vite)
-FROM node:18-alpine AS client-builder
+FROM node:20-alpine AS client-builder
 
 WORKDIR /app/client
 COPY client/package*.json ./
@@ -14,20 +14,20 @@ COPY client/ ./
 RUN npm run build
 
 # Stage 2: Build the server (Node.js/TypeScript)
-FROM node:18-alpine AS server-builder
+FROM node:20-alpine AS server-builder
 
 WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm install
 
 COPY server/ ./
-RUN npm run build
+RUN npm run build:production
 
 # Stage 3: Production runtime
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
-# Install curl for health checks (Coolify compatible)
-RUN apk add --no-cache curl
+# Install curl and dumb-init for health checks and proper signal handling
+RUN apk add --no-cache curl dumb-init
 
 WORKDIR /app
 
@@ -39,9 +39,8 @@ RUN npm install --only=production
 COPY --from=server-builder /app/server/dist ./dist
 COPY --from=server-builder /app/server/ecosystem.config.js ./
 
-# Copy built client from server/client-build (where Vite always builds)
-# Vite builds to /app/server/client-build from the client-builder stage
-COPY --from=client-builder /app/server/client-build ./client-build
+# Copy built client (Vite builds to dist/)
+COPY --from=client-builder /app/client/dist ./client-build
 
 # Copy database migration files for initialization
 COPY migration_add_app_secret.sql ./
@@ -73,7 +72,12 @@ EXPOSE 3000
 # Environment variables for Coolify
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV SERVE_STATIC=true
+ENV STATIC_DIR=./client-build
+ENV CORS_ORIGINS=*
+ENV APP_VERSION=1.0.0
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
 
 # Start the application
 CMD ["node", "dist/index.js"]

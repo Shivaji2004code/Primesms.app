@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, X, Eye, EyeOff, User as UserIcon, Building, Shield } from 'lucide-react';
+import { ArrowLeft, Save, X, Eye, EyeOff, User as UserIcon, Building, Shield, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import WhatsApp360DialogSettings from '../components/WhatsApp360DialogSettings';
+import AdminUserPricing from '../components/AdminUserPricing';
 import type { UserWithBusinessInfo, CreateBusinessInfoRequest } from '@/types';
 
 export default function AdminUserSettings() {
@@ -336,7 +337,7 @@ export default function AdminUserSettings() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="basic" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[800px]">
             <TabsTrigger value="basic" className="flex items-center space-x-2">
               <UserIcon className="h-4 w-4" />
               <span>Basic Information</span>
@@ -344,6 +345,10 @@ export default function AdminUserSettings() {
             <TabsTrigger value="business" className="flex items-center space-x-2">
               <Building className="h-4 w-4" />
               <span>WhatsApp Business</span>
+            </TabsTrigger>
+            <TabsTrigger value="pricing" className="flex items-center space-x-2">
+              <IndianRupee className="h-4 w-4" />
+              <span>Pricing</span>
             </TabsTrigger>
             <TabsTrigger value="security" className="flex items-center space-x-2">
               <Shield className="h-4 w-4" />
@@ -494,6 +499,11 @@ export default function AdminUserSettings() {
                 <WhatsApp360DialogSettings userId={id || ''} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Pricing Tab */}
+          <TabsContent value="pricing" className="space-y-6">
+            {id && <AdminUserPricing userId={parseInt(id)} />}
           </TabsContent>
 
           {/* Security Tab */}

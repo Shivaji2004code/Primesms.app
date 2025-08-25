@@ -8,7 +8,8 @@ import {
   BarChart3,
   Code,
   User,
-  Trash2
+  Trash2,
+  IndianRupee
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/utils';
@@ -81,6 +82,11 @@ export default function SideNav() {
       name: 'Log Management',
       path: '/admin/logs',
       icon: Trash2
+    },
+    {
+      name: 'Pricing Management',
+      path: '/admin/pricing',
+      icon: IndianRupee
     },
     {
       name: 'Profile',
