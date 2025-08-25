@@ -12,4 +12,3 @@ const pool = new pg_1.Pool({
 });
 exports.pool = pool;
 exports.default = pool;
-//# sourceMappingURL=index.js.map

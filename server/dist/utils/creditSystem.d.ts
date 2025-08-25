@@ -24,6 +24,7 @@ interface CreditTransaction {
     description?: string;
 }
 export declare function getCreditRate(category: TemplateCategory): number;
+export declare function getPricingForUser(userId: number, category: 'marketing' | 'utility' | 'authentication'): Promise<number>;
 export declare function checkSufficientCredits(userId: string, requiredAmount: number): Promise<{
     sufficient: boolean;
     currentBalance: number;
@@ -42,6 +43,26 @@ export declare function getTemplateCategory(userId: string, templateName: string
 export declare function calculateCreditCost(userId: string, templateName: string, messageCount?: number): Promise<{
     cost: number;
     category: TemplateCategory;
+}>;
+export declare function getCostPreview(userId: string, templateName: string, recipientCount?: number): Promise<{
+    unitPrice: number;
+    totalCost: number;
+    currency: string;
+    category: TemplateCategory;
+    pricingMode: 'custom' | 'default';
+}>;
+export declare function getBulkCostPreview(userId: string, templateName: string, recipientsList: string[]): Promise<{
+    unitPrice: number;
+    totalCost: number;
+    currency: string;
+    category: TemplateCategory;
+    pricingMode: 'custom' | 'default';
+    recipientCount: number;
+    breakdown: {
+        validRecipients: number;
+        invalidRecipients: number;
+        duplicatesRemoved: number;
+    };
 }>;
 export declare function preCheckCreditsForBulk(userId: string, templateName: string, messageCount: number): Promise<{
     sufficient: boolean;

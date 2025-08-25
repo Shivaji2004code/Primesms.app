@@ -321,4 +321,3 @@ exports.WAProcessors = WAProcessors;
 function createProcessors(broadcaster) {
     return new WAProcessors(new RealUserBusinessInfoRepo(), new RealTemplatesRepo(), new RealCampaignLogsRepo(), broadcaster);
 }
-//# sourceMappingURL=waProcessors.js.map

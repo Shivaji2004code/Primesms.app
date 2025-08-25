@@ -8,6 +8,8 @@ import {
   deductCredits, 
   CreditTransactionType, 
   calculateCreditCost, 
+  getCostPreview,
+  getBulkCostPreview,
   TemplateCategory 
 } from '../utils/creditSystem';
 import { 
@@ -93,6 +95,112 @@ router.get('/template-info/:username/:templatename', async (req, res) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to analyze template'
+    });
+  }
+});
+
+/**
+ * Cost Preview Endpoint
+ * Get cost estimate for sending messages
+ * GET /api/send/cost-preview/:username/:templatename?recipients=5
+ * POST /api/send/cost-preview with { username, templatename, recipients: ['number1', 'number2'] }
+ */
+router.get('/cost-preview/:username/:templatename', async (req, res) => {
+  try {
+    const { username, templatename } = req.params;
+    const recipientCount = parseInt(req.query.recipients as string) || 1;
+
+    // Authenticate user
+    const authResult = await authenticateAndFetchCredentials(username);
+    if (!authResult.success) {
+      return res.status(authResult.statusCode || 500).json({
+        error: authResult.error,
+        message: authResult.message
+      });
+    }
+
+    const { userId } = authResult.data;
+
+    // Get cost preview
+    const costPreview = await getCostPreview(userId, templatename, recipientCount);
+
+    res.json({
+      success: true,
+      preview: {
+        templateName: templatename,
+        category: costPreview.category,
+        recipientCount: recipientCount,
+        unitPrice: costPreview.unitPrice,
+        totalCost: costPreview.totalCost,
+        currency: costPreview.currency,
+        pricingMode: costPreview.pricingMode
+      }
+    });
+
+  } catch (error) {
+    console.error('Cost preview error:', error);
+    res.status(500).json({
+      error: 'Failed to get cost preview',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * Bulk Cost Preview Endpoint
+ * Get cost estimate for bulk sending with recipient validation
+ */
+router.post('/cost-preview', async (req, res) => {
+  try {
+    const { username, templatename, recipients } = req.body;
+
+    if (!username || !templatename) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'username and templatename are required'
+      });
+    }
+
+    if (!recipients || !Array.isArray(recipients)) {
+      return res.status(400).json({
+        error: 'Invalid recipients',
+        message: 'recipients must be an array of phone numbers'
+      });
+    }
+
+    // Authenticate user
+    const authResult = await authenticateAndFetchCredentials(username);
+    if (!authResult.success) {
+      return res.status(authResult.statusCode || 500).json({
+        error: authResult.error,
+        message: authResult.message
+      });
+    }
+
+    const { userId } = authResult.data;
+
+    // Get bulk cost preview
+    const bulkPreview = await getBulkCostPreview(userId, templatename, recipients);
+
+    res.json({
+      success: true,
+      preview: {
+        templateName: templatename,
+        category: bulkPreview.category,
+        recipientCount: bulkPreview.recipientCount,
+        unitPrice: bulkPreview.unitPrice,
+        totalCost: bulkPreview.totalCost,
+        currency: bulkPreview.currency,
+        pricingMode: bulkPreview.pricingMode,
+        breakdown: bulkPreview.breakdown
+      }
+    });
+
+  } catch (error) {
+    console.error('Bulk cost preview error:', error);
+    res.status(500).json({
+      error: 'Failed to get bulk cost preview',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

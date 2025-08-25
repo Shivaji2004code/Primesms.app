@@ -5,13 +5,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreditTransactionType = exports.CREDIT_RATES = void 0;
 exports.getCreditRate = getCreditRate;
+exports.getPricingForUser = getPricingForUser;
 exports.checkSufficientCredits = checkSufficientCredits;
 exports.deductCredits = deductCredits;
 exports.addCredits = addCredits;
 exports.getTemplateCategory = getTemplateCategory;
 exports.calculateCreditCost = calculateCreditCost;
+exports.getCostPreview = getCostPreview;
+exports.getBulkCostPreview = getBulkCostPreview;
 exports.preCheckCreditsForBulk = preCheckCreditsForBulk;
 const db_1 = __importDefault(require("../db"));
+const pricing_service_1 = require("../services/pricing.service");
+const sendApiHelpers_1 = require("./sendApiHelpers");
 exports.CREDIT_RATES = {
     MARKETING: 0.80,
     UTILITY: 0.15,
@@ -29,6 +34,18 @@ var CreditTransactionType;
 })(CreditTransactionType || (exports.CreditTransactionType = CreditTransactionType = {}));
 function getCreditRate(category) {
     return exports.CREDIT_RATES[category];
+}
+async function getPricingForUser(userId, category) {
+    try {
+        const userPricing = await (0, pricing_service_1.getUserPricing)(userId);
+        const priceString = userPricing.effective[category];
+        return parseFloat(priceString);
+    }
+    catch (error) {
+        console.error(`Failed to get user pricing for user ${userId}, category ${category}:`, error);
+        const templateCategory = category.toUpperCase();
+        return exports.CREDIT_RATES[templateCategory];
+    }
 }
 async function checkSufficientCredits(userId, requiredAmount) {
     const result = await db_1.default.query('SELECT credit_balance FROM users WHERE id = $1', [userId]);
@@ -170,11 +187,58 @@ async function calculateCreditCost(userId, templateName, messageCount = 1) {
     if (!category) {
         throw new Error(`Template '${templateName}' not found or not accessible for this user. Please ensure the template exists and is approved.`);
     }
-    const ratePerMessage = getCreditRate(category);
+    const pricingCategory = category.toLowerCase();
+    const ratePerMessage = await getPricingForUser(parseInt(userId), pricingCategory);
     const totalCost = Math.round((ratePerMessage * messageCount) * 100) / 100;
+    console.log(`💰 PRICING: User ${userId} - ${category} template "${templateName}" x ${messageCount} = ₹${totalCost} (rate: ₹${ratePerMessage})`);
     return {
         cost: totalCost,
         category
+    };
+}
+async function getCostPreview(userId, templateName, recipientCount = 1) {
+    const category = await getTemplateCategory(userId, templateName);
+    if (!category) {
+        throw new Error(`Template '${templateName}' not found or not accessible for this user.`);
+    }
+    const pricingCategory = category.toLowerCase();
+    try {
+        const userPricing = await (0, pricing_service_1.getUserPricing)(parseInt(userId));
+        const unitPrice = parseFloat(userPricing.effective[pricingCategory]);
+        const totalCost = Math.round((unitPrice * recipientCount) * 100) / 100;
+        return {
+            unitPrice,
+            totalCost,
+            currency: 'INR',
+            category,
+            pricingMode: userPricing.mode
+        };
+    }
+    catch (error) {
+        console.error(`Failed to get cost preview for user ${userId}:`, error);
+        const unitPrice = exports.CREDIT_RATES[category];
+        const totalCost = Math.round((unitPrice * recipientCount) * 100) / 100;
+        return {
+            unitPrice,
+            totalCost,
+            currency: 'INR',
+            category,
+            pricingMode: 'default'
+        };
+    }
+}
+async function getBulkCostPreview(userId, templateName, recipientsList) {
+    const uniqueRecipients = [...new Set(recipientsList.filter(r => r && r.trim()))];
+    const validRecipients = uniqueRecipients.filter(r => (0, sendApiHelpers_1.validatePhoneNumber)(r));
+    const costPreview = await getCostPreview(userId, templateName, validRecipients.length);
+    return {
+        ...costPreview,
+        recipientCount: validRecipients.length,
+        breakdown: {
+            validRecipients: validRecipients.length,
+            invalidRecipients: uniqueRecipients.length - validRecipients.length,
+            duplicatesRemoved: recipientsList.length - uniqueRecipients.length
+        }
     };
 }
 async function preCheckCreditsForBulk(userId, templateName, messageCount) {
@@ -187,4 +251,3 @@ async function preCheckCreditsForBulk(userId, templateName, messageCount) {
         category
     };
 }
-//# sourceMappingURL=creditSystem.js.map

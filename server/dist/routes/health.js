@@ -172,4 +172,3 @@ router.post('/shutdown', (req, res) => {
     }, 1000);
 });
 exports.default = router;
-//# sourceMappingURL=health.js.map

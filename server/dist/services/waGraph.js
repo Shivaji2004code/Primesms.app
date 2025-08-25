@@ -98,4 +98,3 @@ async function fetchAllTemplatesFromGraph(wabaId, accessToken) {
         return [];
     }
 }
-//# sourceMappingURL=waGraph.js.map

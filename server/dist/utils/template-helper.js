@@ -207,4 +207,3 @@ function isValidImageUrl(url) {
         return false;
     }
 }
-//# sourceMappingURL=template-helper.js.map

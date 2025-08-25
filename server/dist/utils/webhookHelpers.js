@@ -75,4 +75,3 @@ function getUserSSEStatus(userId) {
         hasAnyConnections: hasReportConnections || hasTemplateConnections
     };
 }
-//# sourceMappingURL=webhookHelpers.js.map

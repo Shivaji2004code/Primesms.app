@@ -20,6 +20,38 @@ router.get('/health', shallowHealth);
 router.get('/healthz', shallowHealth);
 router.get('/api/health', shallowHealth);
 router.get('/api/healthz', shallowHealth);
+router.get('/version', (_req, res) => {
+    const packageInfo = require('../package.json');
+    res.json({
+        name: packageInfo.name || 'prime-sms-server',
+        version: process.env.APP_VERSION || packageInfo.version || '1.2.0',
+        build: process.env.BUILD_ID || 'local',
+        environment: process.env.NODE_ENV || 'development',
+        features: [
+            'whatsapp-business-api',
+            'bulk-messaging',
+            'template-management',
+            'admin-dashboard',
+            'pricing-system',
+            '360dialog-integration'
+        ],
+        timestamp: new Date().toISOString()
+    });
+});
+router.get('/api/metrics', (_req, res) => {
+    const os = require('os');
+    res.json({
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        cpu: process.cpuUsage(),
+        load: os.loadavg(),
+        platform: process.platform,
+        arch: process.arch,
+        node_version: process.version,
+        pid: process.pid,
+        timestamp: new Date().toISOString()
+    });
+});
 router.get('/api/health/db', async (_req, res) => {
     try {
         const start = Date.now();
@@ -73,4 +105,3 @@ console.log('  - GET /api/healthz (shallow)');
 console.log('  - GET /api/health/db (deep DB check)');
 console.log('  - GET /api/health/version (version info)');
 exports.default = router;
-//# sourceMappingURL=health.js.map

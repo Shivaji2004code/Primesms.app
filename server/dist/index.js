@@ -37,6 +37,7 @@ const templatesSync360Dialog_1 = __importDefault(require("./routes/templatesSync
 const templatesDebug_1 = __importDefault(require("./routes/templatesDebug"));
 const templatesSyncDirect_1 = __importDefault(require("./routes/templatesSyncDirect"));
 const payments_razorpay_routes_1 = __importDefault(require("./routes/payments.razorpay.routes"));
+const pricing_routes_1 = __importDefault(require("./routes/pricing.routes"));
 const auth_2 = require("./middleware/auth");
 const rateLimit_1 = require("./config/rateLimit");
 (0, errorHandler_1.setupGlobalErrorHandlers)();
@@ -347,6 +348,7 @@ app.get('/api/debug/session', rateLimit_1.noLimiter, (req, res) => {
     res.json(sessionData);
 });
 app.use('/api/admin', rateLimit_1.adminLimiter, admin_1.default);
+app.use('/api/admin/pricing', rateLimit_1.adminLimiter, pricing_routes_1.default);
 app.use('/api/admin/whatsapp', rateLimit_1.adminLimiter, whatsapp360dialog_1.default);
 app.use('/api/templates', rateLimit_1.readLimiter, templates_1.default);
 app.use('/api/logs', rateLimit_1.readLimiter, logs_1.default);
@@ -626,4 +628,3 @@ const startServer = async () => {
 const server = global.server;
 startServer();
 exports.default = app;
-//# sourceMappingURL=index.js.map

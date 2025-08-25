@@ -25,6 +25,42 @@ router.get('/healthz', shallowHealth);
 router.get('/api/health', shallowHealth);
 router.get('/api/healthz', shallowHealth);
 
+// Version endpoint for deployment tracking
+router.get('/version', (_req, res) => {
+  const packageInfo = require('../package.json');
+  res.json({
+    name: packageInfo.name || 'prime-sms-server',
+    version: process.env.APP_VERSION || packageInfo.version || '1.2.0',
+    build: process.env.BUILD_ID || 'local',
+    environment: process.env.NODE_ENV || 'development',
+    features: [
+      'whatsapp-business-api',
+      'bulk-messaging',
+      'template-management',
+      'admin-dashboard',
+      'pricing-system',
+      '360dialog-integration'
+    ],
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Metrics endpoint for monitoring
+router.get('/api/metrics', (_req, res) => {
+  const os = require('os');
+  res.json({
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    cpu: process.cpuUsage(),
+    load: os.loadavg(),
+    platform: process.platform,
+    arch: process.arch,
+    node_version: process.version,
+    pid: process.pid,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Deep DB health (optional; for debugging, not used by Coolify healthcheck)
 // Only use this for manual debugging - never for container health
 router.get('/api/health/db', async (_req, res) => {

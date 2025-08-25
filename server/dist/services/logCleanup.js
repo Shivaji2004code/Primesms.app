@@ -114,4 +114,3 @@ class LogCleanupService {
 }
 exports.LogCleanupService = LogCleanupService;
 exports.logCleanupService = LogCleanupService.getInstance();
-//# sourceMappingURL=logCleanup.js.map

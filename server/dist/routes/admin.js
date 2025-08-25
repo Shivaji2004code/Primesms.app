@@ -606,4 +606,3 @@ router.post('/users/:id/change-password', async (req, res) => {
     }
 });
 exports.default = router;
-//# sourceMappingURL=admin.js.map

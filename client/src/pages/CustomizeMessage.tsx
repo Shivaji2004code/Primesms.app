@@ -38,10 +38,11 @@ import { Progress } from '../components/ui/progress';
 import { useNotifier } from '../contexts/NotificationContext';
 import { apiRequest } from '../lib/api';
 import { useToast } from '../components/ui/use-toast';
+import { useAuth } from '../hooks/useAuth';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
-// Pricing constants per message in INR
-const PRICING = {
+// Fallback pricing constants per message in INR (used if API fails)
+const FALLBACK_PRICING = {
   MARKETING: 0.80,
   UTILITY: 0.15,
   AUTHENTICATION: 0.15
@@ -75,6 +76,7 @@ export default function CustomizeMessage() {
   const navigate = useNavigate();
   const notifier = useNotifier();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Form state
   const [selectedWabaId, setSelectedWabaId] = useState('');
@@ -98,6 +100,15 @@ export default function CustomizeMessage() {
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [sendingLoading, setSendingLoading] = useState(false);
+
+  // Pricing state
+  const [dynamicPricing, setDynamicPricing] = useState<{
+    marketing: number;
+    utility: number;
+    authentication: number;
+    pricingMode: 'custom' | 'default';
+  } | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
 
   // Pricing modal state
   const [showPricingModal, setShowPricingModal] = useState(false);
@@ -211,6 +222,13 @@ export default function CustomizeMessage() {
     }
   }, [selectedTemplate]);
 
+  // Fetch cost preview when template or data changes
+  useEffect(() => {
+    if (selectedTemplate && excelData.length > 0) {
+      fetchCostPreview();
+    }
+  }, [selectedTemplate, excelData]);
+
   // Calculate form completion percentage
   const getFormProgress = () => {
     let completed = 0;
@@ -227,15 +245,56 @@ export default function CustomizeMessage() {
     return selectedTemplate.category?.toUpperCase() || 'UTILITY';
   };
 
-  // Calculate campaign cost
+  // Fetch cost preview from API
+  const fetchCostPreview = async () => {
+    if (!selectedTemplate || excelData.length === 0) return;
+
+    try {
+      setPricingLoading(true);
+      const response = await apiRequest('/send/cost-preview', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: user?.username || 'current_user',
+          templatename: selectedTemplate.name,
+          recipients: excelData.slice(0, Math.min(excelData.length, 100)) // Sample for preview
+        })
+      });
+
+      if (response.success) {
+        const pricing = response.preview;
+        setDynamicPricing({
+          marketing: pricing.category === 'MARKETING' ? pricing.unitPrice : (dynamicPricing?.marketing || FALLBACK_PRICING.MARKETING),
+          utility: pricing.category === 'UTILITY' ? pricing.unitPrice : (dynamicPricing?.utility || FALLBACK_PRICING.UTILITY), 
+          authentication: pricing.category === 'AUTHENTICATION' ? pricing.unitPrice : (dynamicPricing?.authentication || FALLBACK_PRICING.AUTHENTICATION),
+          pricingMode: pricing.pricingMode
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch cost preview:', error);
+      // Keep using fallback pricing
+    } finally {
+      setPricingLoading(false);
+    }
+  };
+
+  // Calculate campaign cost using dynamic or fallback pricing
   const calculateCampaignCost = () => {
-    const category = getSelectedTemplateCategory() as keyof typeof PRICING;
-    const pricePerMessage = PRICING[category] || PRICING.UTILITY;
+    const category = getSelectedTemplateCategory() as keyof typeof FALLBACK_PRICING;
+    
+    let pricePerMessage: number;
+    if (dynamicPricing) {
+      const pricingKey = category.toLowerCase() as keyof typeof dynamicPricing;
+      pricePerMessage = dynamicPricing[pricingKey] || FALLBACK_PRICING[category];
+    } else {
+      pricePerMessage = FALLBACK_PRICING[category];
+    }
+    
     const totalMessages = excelData.length;
     return {
       pricePerMessage,
       totalMessages,
-      totalCost: (pricePerMessage * totalMessages).toFixed(2)
+      totalCost: (pricePerMessage * totalMessages).toFixed(2),
+      pricingMode: dynamicPricing?.pricingMode || 'default'
     };
   };
 
@@ -756,6 +815,19 @@ export default function CustomizeMessage() {
                       <span className="text-gray-900">Total Cost:</span>
                       <span className="text-green-600">₹{calculateCampaignCost().totalCost}</span>
                     </div>
+                    {pricingLoading && (
+                      <div className="flex items-center justify-center text-sm text-gray-500 mt-2">
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Updating pricing...
+                      </div>
+                    )}
+                    {dynamicPricing && (
+                      <div className="flex justify-center mt-2">
+                        <Badge variant={dynamicPricing.pricingMode === 'custom' ? 'default' : 'secondary'} className="text-xs">
+                          {dynamicPricing.pricingMode === 'custom' ? 'Custom Pricing' : 'Default Pricing'}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

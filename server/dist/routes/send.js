@@ -60,6 +60,86 @@ router.get('/template-info/:username/:templatename', async (req, res) => {
         });
     }
 });
+router.get('/cost-preview/:username/:templatename', async (req, res) => {
+    try {
+        const { username, templatename } = req.params;
+        const recipientCount = parseInt(req.query.recipients) || 1;
+        const authResult = await authenticateAndFetchCredentials(username);
+        if (!authResult.success) {
+            return res.status(authResult.statusCode || 500).json({
+                error: authResult.error,
+                message: authResult.message
+            });
+        }
+        const { userId } = authResult.data;
+        const costPreview = await (0, creditSystem_1.getCostPreview)(userId, templatename, recipientCount);
+        res.json({
+            success: true,
+            preview: {
+                templateName: templatename,
+                category: costPreview.category,
+                recipientCount: recipientCount,
+                unitPrice: costPreview.unitPrice,
+                totalCost: costPreview.totalCost,
+                currency: costPreview.currency,
+                pricingMode: costPreview.pricingMode
+            }
+        });
+    }
+    catch (error) {
+        console.error('Cost preview error:', error);
+        res.status(500).json({
+            error: 'Failed to get cost preview',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+router.post('/cost-preview', async (req, res) => {
+    try {
+        const { username, templatename, recipients } = req.body;
+        if (!username || !templatename) {
+            return res.status(400).json({
+                error: 'Missing required fields',
+                message: 'username and templatename are required'
+            });
+        }
+        if (!recipients || !Array.isArray(recipients)) {
+            return res.status(400).json({
+                error: 'Invalid recipients',
+                message: 'recipients must be an array of phone numbers'
+            });
+        }
+        const authResult = await authenticateAndFetchCredentials(username);
+        if (!authResult.success) {
+            return res.status(authResult.statusCode || 500).json({
+                error: authResult.error,
+                message: authResult.message
+            });
+        }
+        const { userId } = authResult.data;
+        const bulkPreview = await (0, creditSystem_1.getBulkCostPreview)(userId, templatename, recipients);
+        res.json({
+            success: true,
+            preview: {
+                templateName: templatename,
+                category: bulkPreview.category,
+                recipientCount: bulkPreview.recipientCount,
+                unitPrice: bulkPreview.unitPrice,
+                totalCost: bulkPreview.totalCost,
+                currency: bulkPreview.currency,
+                pricingMode: bulkPreview.pricingMode,
+                breakdown: bulkPreview.breakdown
+            }
+        });
+    }
+    catch (error) {
+        console.error('Bulk cost preview error:', error);
+        res.status(500).json({
+            error: 'Failed to get bulk cost preview',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
 router.all('/', async (req, res) => {
     try {
         const params = extractParameters(req);
@@ -639,4 +719,3 @@ function analyzeTemplate(template) {
     return analysis;
 }
 exports.default = router;
-//# sourceMappingURL=send.js.map

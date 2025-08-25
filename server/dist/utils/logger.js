@@ -117,4 +117,3 @@ const logShutdown = (message, reason) => {
 };
 exports.logShutdown = logShutdown;
 exports.default = logger;
-//# sourceMappingURL=logger.js.map

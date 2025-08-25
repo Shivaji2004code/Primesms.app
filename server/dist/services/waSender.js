@@ -198,4 +198,3 @@ async function sendWhatsAppMessage(opts) {
     }
     return { ok: false, to, error: 'Exhausted retries' };
 }
-//# sourceMappingURL=waSender.js.map

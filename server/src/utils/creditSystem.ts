@@ -1,7 +1,9 @@
 // [Claude AI] Credit System Enhancement — Aug 2025
 import pool from '../db';
+import { getUserPricing, mapMetaCategory, type UserPricingResponse } from '../services/pricing.service';
+import { validatePhoneNumber } from './sendApiHelpers';
 
-// Credit deduction rates by template category (in Rupees)
+// Fallback credit deduction rates by template category (in Rupees) - used when pricing service fails
 export const CREDIT_RATES = {
   MARKETING: 0.80,
   UTILITY: 0.15,
@@ -33,10 +35,30 @@ interface CreditTransaction {
 }
 
 /**
- * Get the credit rate for a template category
+ * Get the credit rate for a template category (fallback function)
+ * @deprecated Use getPricingForUser() instead for dynamic pricing
  */
 export function getCreditRate(category: TemplateCategory): number {
   return CREDIT_RATES[category];
+}
+
+/**
+ * Get user-specific pricing for a template category
+ */
+export async function getPricingForUser(
+  userId: number,
+  category: 'marketing' | 'utility' | 'authentication'
+): Promise<number> {
+  try {
+    const userPricing = await getUserPricing(userId);
+    const priceString = userPricing.effective[category];
+    return parseFloat(priceString);
+  } catch (error) {
+    console.error(`Failed to get user pricing for user ${userId}, category ${category}:`, error);
+    // Fallback to hardcoded rates
+    const templateCategory = category.toUpperCase() as TemplateCategory;
+    return CREDIT_RATES[templateCategory];
+  }
 }
 
 /**
@@ -283,12 +305,107 @@ export async function calculateCreditCost(
     throw new Error(`Template '${templateName}' not found or not accessible for this user. Please ensure the template exists and is approved.`);
   }
   
-  const ratePerMessage = getCreditRate(category);
+  // Convert template category to pricing category
+  const pricingCategory = category.toLowerCase() as 'marketing' | 'utility' | 'authentication';
+  
+  // Get user-specific pricing
+  const ratePerMessage = await getPricingForUser(parseInt(userId), pricingCategory);
   const totalCost = Math.round((ratePerMessage * messageCount) * 100) / 100; // Round to 2 decimal places
+  
+  console.log(`💰 PRICING: User ${userId} - ${category} template "${templateName}" x ${messageCount} = ₹${totalCost} (rate: ₹${ratePerMessage})`);
   
   return {
     cost: totalCost,
     category
+  };
+}
+
+/**
+ * Get cost preview for a template and recipient count
+ */
+export async function getCostPreview(
+  userId: string,
+  templateName: string,
+  recipientCount: number = 1
+): Promise<{
+  unitPrice: number;
+  totalCost: number;
+  currency: string;
+  category: TemplateCategory;
+  pricingMode: 'custom' | 'default';
+}> {
+  const category = await getTemplateCategory(userId, templateName);
+  
+  if (!category) {
+    throw new Error(`Template '${templateName}' not found or not accessible for this user.`);
+  }
+  
+  // Convert template category to pricing category
+  const pricingCategory = category.toLowerCase() as 'marketing' | 'utility' | 'authentication';
+  
+  try {
+    // Get detailed pricing information including mode
+    const userPricing = await getUserPricing(parseInt(userId));
+    const unitPrice = parseFloat(userPricing.effective[pricingCategory]);
+    const totalCost = Math.round((unitPrice * recipientCount) * 100) / 100;
+    
+    return {
+      unitPrice,
+      totalCost,
+      currency: 'INR',
+      category,
+      pricingMode: userPricing.mode
+    };
+  } catch (error) {
+    console.error(`Failed to get cost preview for user ${userId}:`, error);
+    // Fallback to hardcoded rates
+    const unitPrice = CREDIT_RATES[category];
+    const totalCost = Math.round((unitPrice * recipientCount) * 100) / 100;
+    
+    return {
+      unitPrice,
+      totalCost,
+      currency: 'INR',
+      category,
+      pricingMode: 'default'
+    };
+  }
+}
+
+/**
+ * Get bulk cost preview for multiple recipients
+ */
+export async function getBulkCostPreview(
+  userId: string,
+  templateName: string,
+  recipientsList: string[]
+): Promise<{
+  unitPrice: number;
+  totalCost: number;
+  currency: string;
+  category: TemplateCategory;
+  pricingMode: 'custom' | 'default';
+  recipientCount: number;
+  breakdown: {
+    validRecipients: number;
+    invalidRecipients: number;
+    duplicatesRemoved: number;
+  };
+}> {
+  // Remove duplicates and validate recipients
+  const uniqueRecipients = [...new Set(recipientsList.filter(r => r && r.trim()))];
+  const validRecipients = uniqueRecipients.filter(r => validatePhoneNumber(r));
+  
+  const costPreview = await getCostPreview(userId, templateName, validRecipients.length);
+  
+  return {
+    ...costPreview,
+    recipientCount: validRecipients.length,
+    breakdown: {
+      validRecipients: validRecipients.length,
+      invalidRecipients: uniqueRecipients.length - validRecipients.length,
+      duplicatesRemoved: recipientsList.length - uniqueRecipients.length
+    }
   };
 }
 

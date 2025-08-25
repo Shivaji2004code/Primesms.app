@@ -502,4 +502,3 @@ router.post('/reset-password', async (req, res) => {
 });
 router.get('/__ping', (_req, res) => res.json({ ok: true, route: '/api/auth/__ping' }));
 exports.default = router;
-//# sourceMappingURL=auth.js.map

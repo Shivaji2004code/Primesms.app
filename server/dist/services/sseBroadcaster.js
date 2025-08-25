@@ -176,4 +176,3 @@ setInterval(() => {
         console.log(`📊 [SSE] Connection stats: ${stats.reports} reports, ${stats.templates} templates (${stats.total} total)`);
     }
 }, 60000);
-//# sourceMappingURL=sseBroadcaster.js.map

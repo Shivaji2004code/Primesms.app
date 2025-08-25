@@ -185,4 +185,3 @@ function createTestInboundEvent(from = '15550001111', text = 'Hello from test') 
         }
     };
 }
-//# sourceMappingURL=n8nForwarder.js.map

@@ -1,57 +1,114 @@
 # ============================================================================
-# DOCKER COMPOSE FOR PRIME SMS - DEVELOPMENT & TESTING
+# DOCKER COMPOSE FOR PRIME SMS - PRODUCTION DEPLOYMENT
+# Includes PostgreSQL, Redis, and optimized Prime SMS app with pricing system
 # ============================================================================
 
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: PrimeSMS_W
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_PORT: 5432
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-      - ./migration_complete_production_fix.sql:/docker-entrypoint-initdb.d/02-migration.sql
-      - ./migration_add_recipient_to_campaign_logs.sql:/docker-entrypoint-initdb.d/03-recipient-fields.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   # Prime SMS Application
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prime-sms-app
+    restart: unless-stopped
     ports:
-      - "5050:5050"
+      - "${PORT:-3000}:3000"
     environment:
-      NODE_ENV: production
-      PORT: 5050
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: PrimeSMS_W
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      SESSION_SECRET: your-session-secret-change-in-production
-      WHATSAPP_API_BASE_URL: https://graph.facebook.com/v21.0
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-PrimeSMS_W}
+      - SESSION_SECRET=${SESSION_SECRET:-change-this-in-production}
+      - APP_VERSION=1.2.0
+      - STATIC_DIR=./client-build
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - TZ=Asia/Kolkata
+      - MAX_REQUEST_SIZE=10mb
+      - SESSION_TIMEOUT=86400000
+      - PRICING_CURRENCY=INR
+      - PRICING_DEFAULT_MARKETING=0.80
+      - PRICING_DEFAULT_UTILITY=0.15
+      - PRICING_DEFAULT_AUTHENTICATION=0.15
+    volumes:
+      - app_uploads:/app/uploads
+      - app_logs:/app/logs
+    networks:
+      - prime-sms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
       postgres:
         condition: service_healthy
+    labels:
+      - "com.docker.compose.project=prime-sms"
+      - "com.docker.compose.service=app"
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: prime-sms-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-PrimeSMS_W}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - app_uploads:/app/uploads
+      - postgres_data:/var/lib/postgresql/data
+      - ./database_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./migration_add_pricing_columns.sql:/docker-entrypoint-initdb.d/02-pricing.sql
+    networks:
+      - prime-sms-network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5050/api/health', (res) => { if (res.statusCode === 200) process.exit(0); else process.exit(1); }).on('error', () => process.exit(1))"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-PrimeSMS_W}"]
       interval: 30s
       timeout: 10s
+      retries: 5
+    labels:
+      - "com.docker.compose.project=prime-sms"
+      - "com.docker.compose.service=database"
+
+  # Redis for session storage and caching
+  redis:
+    image: redis:7-alpine
+    container_name: prime-sms-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - prime-sms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
       retries: 3
+    labels:
+      - "com.docker.compose.project=prime-sms"
+      - "com.docker.compose.service=redis"
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
+    driver: local
   app_uploads:
+    driver: local
+  app_logs:
+    driver: local
+
+networks:
+  prime-sms-network:
+    driver: bridge
+    labels:
+      - "com.docker.compose.project=prime-sms"
