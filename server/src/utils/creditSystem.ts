@@ -46,7 +46,7 @@ export function getCreditRate(category: TemplateCategory): number {
  * Get user-specific pricing for a template category
  */
 export async function getPricingForUser(
-  userId: number,
+  userId: string,
   category: 'marketing' | 'utility' | 'authentication'
 ): Promise<number> {
   try {
@@ -309,7 +309,7 @@ export async function calculateCreditCost(
   const pricingCategory = category.toLowerCase() as 'marketing' | 'utility' | 'authentication';
   
   // Get user-specific pricing
-  const ratePerMessage = await getPricingForUser(parseInt(userId), pricingCategory);
+  const ratePerMessage = await getPricingForUser(userId, pricingCategory);
   const totalCost = Math.round((ratePerMessage * messageCount) * 100) / 100; // Round to 2 decimal places
   
   console.log(`💰 PRICING: User ${userId} - ${category} template "${templateName}" x ${messageCount} = ₹${totalCost} (rate: ₹${ratePerMessage})`);
@@ -345,7 +345,7 @@ export async function getCostPreview(
   
   try {
     // Get detailed pricing information including mode
-    const userPricing = await getUserPricing(parseInt(userId));
+    const userPricing = await getUserPricing(userId);
     const unitPrice = parseFloat(userPricing.effective[pricingCategory]);
     const totalCost = Math.round((unitPrice * recipientCount) * 100) / 100;
     

@@ -1483,3 +1483,4 @@ router.post('/:id/refresh-status', async (req, res) => {
     }
 });
 exports.default = router;
+//# sourceMappingURL=templates.js.map

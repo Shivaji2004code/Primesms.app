@@ -100,3 +100,4 @@ router.get('/cleanup/status', auth_1.requireAuth, auth_1.requireAdmin, (req, res
     });
 });
 exports.default = router;
+//# sourceMappingURL=logs.js.map

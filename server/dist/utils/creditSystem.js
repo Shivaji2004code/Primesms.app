@@ -188,7 +188,7 @@ async function calculateCreditCost(userId, templateName, messageCount = 1) {
         throw new Error(`Template '${templateName}' not found or not accessible for this user. Please ensure the template exists and is approved.`);
     }
     const pricingCategory = category.toLowerCase();
-    const ratePerMessage = await getPricingForUser(parseInt(userId), pricingCategory);
+    const ratePerMessage = await getPricingForUser(userId, pricingCategory);
     const totalCost = Math.round((ratePerMessage * messageCount) * 100) / 100;
     console.log(`💰 PRICING: User ${userId} - ${category} template "${templateName}" x ${messageCount} = ₹${totalCost} (rate: ₹${ratePerMessage})`);
     return {
@@ -203,7 +203,7 @@ async function getCostPreview(userId, templateName, recipientCount = 1) {
     }
     const pricingCategory = category.toLowerCase();
     try {
-        const userPricing = await (0, pricing_service_1.getUserPricing)(parseInt(userId));
+        const userPricing = await (0, pricing_service_1.getUserPricing)(userId);
         const unitPrice = parseFloat(userPricing.effective[pricingCategory]);
         const totalCost = Math.round((unitPrice * recipientCount) * 100) / 100;
         return {
@@ -251,3 +251,4 @@ async function preCheckCreditsForBulk(userId, templateName, messageCount) {
         category
     };
 }
+//# sourceMappingURL=creditSystem.js.map

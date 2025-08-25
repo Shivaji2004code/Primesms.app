@@ -205,6 +205,46 @@ router.post('/cost-preview', async (req, res) => {
   }
 });
 
+/**
+ * User Pricing Endpoint
+ * Get current user's effective pricing for all categories
+ * Requires session authentication
+ */
+router.get('/my-pricing', async (req, res) => {
+  try {
+    // Check if user is authenticated via session
+    if (!req.session.user?.id) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Please log in to view pricing'
+      });
+    }
+
+    const userId = req.session.user.id;
+
+    // Import getUserPricing here to avoid circular dependency
+    const { getUserPricing } = await import('../services/pricing.service');
+    
+    // Get user's effective pricing
+    const userPricing = await getUserPricing(userId);
+
+    res.json({
+      success: true,
+      userId: userPricing.userId,
+      mode: userPricing.mode,
+      effective: userPricing.effective,
+      currency: userPricing.effective.currency
+    });
+
+  } catch (error) {
+    console.error('User pricing fetch error:', error);
+    res.status(500).json({
+      error: 'Failed to get pricing',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 router.all('/', async (req, res) => {
   try {
     

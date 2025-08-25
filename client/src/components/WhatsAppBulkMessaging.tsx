@@ -36,6 +36,7 @@ import { useNotifier } from '../contexts/NotificationContext';
 import { apiRequest } from '../lib/api';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 interface WhatsAppNumber {
   id: string;
@@ -96,6 +97,7 @@ const FALLBACK_PRICING = {
 
 export default function WhatsAppBulkMessaging() {
   const notifier = useNotifier();
+  const { user } = useAuth();
   
   // Form state
   const [selectedNumber, setSelectedNumber] = useState<string>('');
@@ -347,41 +349,10 @@ export default function WhatsAppBulkMessaging() {
   // Fetch dynamic pricing from the API
   const fetchCostPreview = async () => {
     if (recipients.length === 0 || !selectedTemplate) {
-      // Set basic pricing if no template selected yet
-      try {
-        setPricingLoading(true);
-        const response = await apiRequest('/api/admin/pricing/defaults', {
-          method: 'GET'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setDynamicPricing({
-            marketing: parseFloat(data.marketing),
-            utility: parseFloat(data.utility),
-            authentication: parseFloat(data.authentication),
-            currency: data.currency || 'INR'
-          });
-        } else {
-          console.warn('Failed to fetch default pricing, using fallbacks');
-          setDynamicPricing({
-            marketing: FALLBACK_PRICING.MARKETING,
-            utility: FALLBACK_PRICING.UTILITY,
-            authentication: FALLBACK_PRICING.AUTHENTICATION,
-            currency: 'INR'
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching pricing:', error);
-        setDynamicPricing({
-          marketing: FALLBACK_PRICING.MARKETING,
-          utility: FALLBACK_PRICING.UTILITY,
-          authentication: FALLBACK_PRICING.AUTHENTICATION,
-          currency: 'INR'
-        });
-      } finally {
-        setPricingLoading(false);
-      }
+      // Fetch user-specific pricing even when no template/recipients selected
+      setPricingLoading(true);
+      await fetchAllUserPricing();
+      setPricingLoading(false);
       return;
     }
 
@@ -391,6 +362,7 @@ export default function WhatsAppBulkMessaging() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          username: user?.username || 'current_user',
           templatename: selectedTemplate,
           recipients: recipients.slice(0, Math.min(recipients.length, 100)) // Limit for preview
         })
@@ -398,13 +370,10 @@ export default function WhatsAppBulkMessaging() {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.pricing) {
-          setDynamicPricing({
-            marketing: data.pricing.marketing,
-            utility: data.pricing.utility,
-            authentication: data.pricing.authentication,
-            currency: data.pricing.currency || 'INR'
-          });
+        if (data.success && data.preview) {
+          // The API returns the pricing for the specific template category
+          // We need to fetch all pricing categories for the user
+          await fetchAllUserPricing();
         }
       } else {
         console.warn('Cost preview failed, using fallback pricing');
@@ -425,6 +394,53 @@ export default function WhatsAppBulkMessaging() {
       });
     } finally {
       setPricingLoading(false);
+    }
+  };
+
+  // Fetch all user pricing categories
+  const fetchAllUserPricing = async () => {
+    try {
+      // Call user-facing API to get current user's complete pricing information
+      const response = await apiRequest('/send/my-pricing', {
+        method: 'GET'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.effective) {
+          setDynamicPricing({
+            marketing: parseFloat(data.effective.marketing),
+            utility: parseFloat(data.effective.utility),
+            authentication: parseFloat(data.effective.authentication),
+            currency: data.effective.currency || 'INR'
+          });
+          console.log('✅ Fetched user pricing:', data.effective);
+        }
+      } else {
+        console.warn('Failed to fetch user pricing, using defaults');
+        // Fallback to global defaults
+        const defaultResponse = await apiRequest('/api/admin/pricing/defaults', {
+          method: 'GET'
+        });
+        if (defaultResponse.ok) {
+          const defaultData = await defaultResponse.json();
+          setDynamicPricing({
+            marketing: parseFloat(defaultData.marketing),
+            utility: parseFloat(defaultData.utility),
+            authentication: parseFloat(defaultData.authentication),
+            currency: defaultData.currency || 'INR'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user pricing:', error);
+      // Use fallback pricing
+      setDynamicPricing({
+        marketing: FALLBACK_PRICING.MARKETING,
+        utility: FALLBACK_PRICING.UTILITY,
+        authentication: FALLBACK_PRICING.AUTHENTICATION,
+        currency: 'INR'
+      });
     }
   };
 

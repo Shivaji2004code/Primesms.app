@@ -144,3 +144,4 @@ function validateTemplateCompatibility(template) {
         issues: issues.length > 0 ? issues : undefined
     };
 }
+//# sourceMappingURL=sendApiHelpers.js.map

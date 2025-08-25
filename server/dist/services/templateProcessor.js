@@ -140,3 +140,4 @@ async function processTemplateWebhookEntry(entry) {
         console.error('❌ [TEMPLATE_PROCESSOR] Error processing webhook entry:', error);
     }
 }
+//# sourceMappingURL=templateProcessor.js.map

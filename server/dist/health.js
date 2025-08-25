@@ -105,3 +105,4 @@ console.log('  - GET /api/healthz (shallow)');
 console.log('  - GET /api/health/db (deep DB check)');
 console.log('  - GET /api/health/version (version info)');
 exports.default = router;
+//# sourceMappingURL=health.js.map

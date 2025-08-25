@@ -159,3 +159,4 @@ const deductCredits = async (userId, amount, description) => {
 };
 exports.deductCredits = deductCredits;
 exports.default = router;
+//# sourceMappingURL=credits.js.map

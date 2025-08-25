@@ -119,9 +119,9 @@ router.put('/defaults', async (req, res) => {
  */
 router.get('/users/:userId/pricing', async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId);
+    const userId = req.params.userId;
     
-    if (isNaN(userId) || userId <= 0) {
+    if (!userId || typeof userId !== 'string') {
       return res.status(400).json({
         success: false,
         error: 'Invalid user ID'
@@ -157,9 +157,9 @@ router.get('/users/:userId/pricing', async (req, res) => {
  */
 router.put('/users/:userId/pricing', async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId);
+    const userId = req.params.userId;
     
-    if (isNaN(userId) || userId <= 0) {
+    if (!userId || typeof userId !== 'string') {
       return res.status(400).json({
         success: false,
         error: 'Invalid user ID'

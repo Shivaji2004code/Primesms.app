@@ -29,7 +29,7 @@ export interface UserPricingCustom {
 }
 
 export interface UserPricingResponse {
-  userId: number;
+  userId: string; // Changed to string to support UUID
   mode: 'custom' | 'default';
   custom: UserPricingCustom;
   effective: PricingDefaults;
@@ -177,7 +177,7 @@ export async function updateGlobalDefaults(updates: Partial<Omit<PricingDefaults
 /**
  * Get user-specific pricing (returns mode, custom, effective, defaults)
  */
-export async function getUserPricing(userId: number): Promise<UserPricingResponse> {
+export async function getUserPricing(userId: string): Promise<UserPricingResponse> {
   try {
     // Get user's custom pricing from user_business_info
     const userResult = await pool.query(
@@ -237,7 +237,7 @@ export async function getUserPricing(userId: number): Promise<UserPricingRespons
  * Update user-specific pricing
  */
 export async function updateUserPricing(
-  userId: number, 
+  userId: string, 
   mode: 'custom' | 'default', 
   pricing?: UserPricingCustom
 ): Promise<UserPricingResponse> {
@@ -342,7 +342,7 @@ export async function updateUserPricing(
  * Compute message charge for billing
  */
 export async function computeMessageCharge(params: {
-  userId: number;
+  userId: string;
   category: 'marketing' | 'utility' | 'authentication';
   recipientsCount: number;
 }): Promise<MessageCharge> {

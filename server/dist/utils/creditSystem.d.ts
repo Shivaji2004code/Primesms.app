@@ -24,7 +24,7 @@ interface CreditTransaction {
     description?: string;
 }
 export declare function getCreditRate(category: TemplateCategory): number;
-export declare function getPricingForUser(userId: number, category: 'marketing' | 'utility' | 'authentication'): Promise<number>;
+export declare function getPricingForUser(userId: string, category: 'marketing' | 'utility' | 'authentication'): Promise<number>;
 export declare function checkSufficientCredits(userId: string, requiredAmount: number): Promise<{
     sufficient: boolean;
     currentBalance: number;

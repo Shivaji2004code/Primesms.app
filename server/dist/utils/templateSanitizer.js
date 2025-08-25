@@ -119,3 +119,4 @@ function sanitizeTemplateResponse(req, res, next) {
     };
     next();
 }
+//# sourceMappingURL=templateSanitizer.js.map

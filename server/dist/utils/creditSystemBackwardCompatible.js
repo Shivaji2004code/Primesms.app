@@ -111,3 +111,4 @@ Object.defineProperty(exports, "addCredits", { enumerable: true, get: function (
 Object.defineProperty(exports, "getTemplateCategory", { enumerable: true, get: function () { return creditSystem_1.getTemplateCategory; } });
 Object.defineProperty(exports, "calculateCreditCost", { enumerable: true, get: function () { return creditSystem_1.calculateCreditCost; } });
 Object.defineProperty(exports, "preCheckCreditsForBulk", { enumerable: true, get: function () { return creditSystem_1.preCheckCreditsForBulk; } });
+//# sourceMappingURL=creditSystemBackwardCompatible.js.map

@@ -207,3 +207,4 @@ router.get('/api/templates/webhook-test/:userId', async (req, res) => {
     }
 });
 exports.default = router;
+//# sourceMappingURL=templatesSyncDirect.js.map

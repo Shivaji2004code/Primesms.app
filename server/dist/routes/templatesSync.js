@@ -146,3 +146,4 @@ router.get('/api/templates/sync/status/:userId', async (req, res) => {
     }
 });
 exports.default = router;
+//# sourceMappingURL=templatesSync.js.map

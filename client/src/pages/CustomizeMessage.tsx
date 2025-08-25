@@ -245,36 +245,65 @@ export default function CustomizeMessage() {
     return selectedTemplate.category?.toUpperCase() || 'UTILITY';
   };
 
-  // Fetch cost preview from API
-  const fetchCostPreview = async () => {
-    if (!selectedTemplate || excelData.length === 0) return;
-
+  // Fetch all user pricing categories
+  const fetchAllUserPricing = async () => {
     try {
-      setPricingLoading(true);
-      const response = await apiRequest('/send/cost-preview', {
-        method: 'POST',
-        body: JSON.stringify({
-          username: user?.username || 'current_user',
-          templatename: selectedTemplate.name,
-          recipients: excelData.slice(0, Math.min(excelData.length, 100)) // Sample for preview
-        })
+      // Call user-facing API to get current user's complete pricing information
+      const response = await apiRequest('/send/my-pricing', {
+        method: 'GET'
       });
 
-      if (response.success) {
-        const pricing = response.preview;
-        setDynamicPricing({
-          marketing: pricing.category === 'MARKETING' ? pricing.unitPrice : (dynamicPricing?.marketing || FALLBACK_PRICING.MARKETING),
-          utility: pricing.category === 'UTILITY' ? pricing.unitPrice : (dynamicPricing?.utility || FALLBACK_PRICING.UTILITY), 
-          authentication: pricing.category === 'AUTHENTICATION' ? pricing.unitPrice : (dynamicPricing?.authentication || FALLBACK_PRICING.AUTHENTICATION),
-          pricingMode: pricing.pricingMode
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.effective) {
+          setDynamicPricing({
+            marketing: parseFloat(data.effective.marketing),
+            utility: parseFloat(data.effective.utility),
+            authentication: parseFloat(data.effective.authentication),
+            pricingMode: data.mode || 'default'
+          });
+          console.log('✅ CustomizeMessage: Fetched user pricing:', data.effective);
+        }
+      } else {
+        console.warn('Failed to fetch user pricing, using defaults');
+        // Fallback to global defaults
+        const defaultResponse = await apiRequest('/api/admin/pricing/defaults', {
+          method: 'GET'
         });
+        if (defaultResponse.ok) {
+          const defaultData = await defaultResponse.json();
+          setDynamicPricing({
+            marketing: parseFloat(defaultData.marketing),
+            utility: parseFloat(defaultData.utility),
+            authentication: parseFloat(defaultData.authentication),
+            pricingMode: 'default'
+          });
+        }
       }
     } catch (error) {
-      console.error('Failed to fetch cost preview:', error);
-      // Keep using fallback pricing
-    } finally {
-      setPricingLoading(false);
+      console.error('Error fetching user pricing:', error);
+      // Use fallback pricing
+      setDynamicPricing({
+        marketing: FALLBACK_PRICING.MARKETING,
+        utility: FALLBACK_PRICING.UTILITY,
+        authentication: FALLBACK_PRICING.AUTHENTICATION,
+        pricingMode: 'default'
+      });
     }
+  };
+
+  // Fetch cost preview from API
+  const fetchCostPreview = async () => {
+    if (!selectedTemplate) {
+      // Fetch user-specific pricing even when no template selected
+      setPricingLoading(true);
+      await fetchAllUserPricing();
+      setPricingLoading(false);
+      return;
+    }
+
+    // Always fetch complete user pricing for all categories
+    await fetchAllUserPricing();
   };
 
   // Calculate campaign cost using dynamic or fallback pricing

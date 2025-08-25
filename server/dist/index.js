@@ -628,3 +628,4 @@ const startServer = async () => {
 const server = global.server;
 startServer();
 exports.default = app;
+//# sourceMappingURL=index.js.map

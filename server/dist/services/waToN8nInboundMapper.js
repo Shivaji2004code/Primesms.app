@@ -284,3 +284,4 @@ function logMappedMessage(mapped, context = '') {
         hasSticker: !!message.sticker
     });
 }
+//# sourceMappingURL=waToN8nInboundMapper.js.map
