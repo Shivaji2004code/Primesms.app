@@ -23,7 +23,7 @@ import {
   Star,
   Crown,
   RefreshCw,
-  DollarSign,
+  IndianRupee,
   X
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
@@ -798,7 +798,7 @@ export default function CustomizeMessage() {
               {/* Simple Pricing Breakdown */}
               <div className="p-4 bg-gray-50 rounded-lg border mb-6">
                 <div className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                  <DollarSign className="h-5 w-5 text-gray-600 mr-2" />
+                  <IndianRupee className="h-5 w-5 text-gray-600 mr-2" />
                   Pricing Breakdown
                 </div>
                 <div className="space-y-2">

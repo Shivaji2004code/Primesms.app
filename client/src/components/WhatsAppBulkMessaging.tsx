@@ -18,7 +18,7 @@ import {
   Info,
   RefreshCw,
   Copy,
-  DollarSign,
+  IndianRupee,
   X
 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -87,8 +87,8 @@ interface ImportResult {
 }
 
 
-// Pricing constants
-const PRICING = {
+// Fallback pricing for loading states
+const FALLBACK_PRICING = {
   MARKETING: 0.80,
   UTILITY: 0.15,
   AUTHENTICATION: 0.15,
@@ -112,6 +112,15 @@ export default function WhatsAppBulkMessaging() {
   // Pricing modal state
   const [showPricingModal, setShowPricingModal] = useState<boolean>(false);
   const [calculatedCost, setCalculatedCost] = useState<number>(0);
+  
+  // Dynamic pricing state
+  const [dynamicPricing, setDynamicPricing] = useState<{
+    marketing: number;
+    utility: number;
+    authentication: number;
+    currency: string;
+  } | null>(null);
+  const [pricingLoading, setPricingLoading] = useState<boolean>(false);
   
   // Excel import state (for future customize feature)
   
@@ -203,6 +212,7 @@ export default function WhatsAppBulkMessaging() {
   useEffect(() => {
     fetchWhatsAppNumbers();
     fetchLanguages();
+    fetchCostPreview(); // Load pricing on component mount
   }, []);
 
   // Clear recipient selection when recipients array changes
@@ -331,6 +341,90 @@ export default function WhatsAppBulkMessaging() {
       }
     } catch (error) {
       console.error('Error fetching template details:', error);
+    }
+  };
+
+  // Fetch dynamic pricing from the API
+  const fetchCostPreview = async () => {
+    if (recipients.length === 0 || !selectedTemplate) {
+      // Set basic pricing if no template selected yet
+      try {
+        setPricingLoading(true);
+        const response = await apiRequest('/api/admin/pricing/defaults', {
+          method: 'GET'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setDynamicPricing({
+            marketing: parseFloat(data.marketing),
+            utility: parseFloat(data.utility),
+            authentication: parseFloat(data.authentication),
+            currency: data.currency || 'INR'
+          });
+        } else {
+          console.warn('Failed to fetch default pricing, using fallbacks');
+          setDynamicPricing({
+            marketing: FALLBACK_PRICING.MARKETING,
+            utility: FALLBACK_PRICING.UTILITY,
+            authentication: FALLBACK_PRICING.AUTHENTICATION,
+            currency: 'INR'
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching pricing:', error);
+        setDynamicPricing({
+          marketing: FALLBACK_PRICING.MARKETING,
+          utility: FALLBACK_PRICING.UTILITY,
+          authentication: FALLBACK_PRICING.AUTHENTICATION,
+          currency: 'INR'
+        });
+      } finally {
+        setPricingLoading(false);
+      }
+      return;
+    }
+
+    try {
+      setPricingLoading(true);
+      const response = await apiRequest('/send/cost-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templatename: selectedTemplate,
+          recipients: recipients.slice(0, Math.min(recipients.length, 100)) // Limit for preview
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.pricing) {
+          setDynamicPricing({
+            marketing: data.pricing.marketing,
+            utility: data.pricing.utility,
+            authentication: data.pricing.authentication,
+            currency: data.pricing.currency || 'INR'
+          });
+        }
+      } else {
+        console.warn('Cost preview failed, using fallback pricing');
+        setDynamicPricing({
+          marketing: FALLBACK_PRICING.MARKETING,
+          utility: FALLBACK_PRICING.UTILITY,
+          authentication: FALLBACK_PRICING.AUTHENTICATION,
+          currency: 'INR'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching cost preview:', error);
+      setDynamicPricing({
+        marketing: FALLBACK_PRICING.MARKETING,
+        utility: FALLBACK_PRICING.UTILITY,
+        authentication: FALLBACK_PRICING.AUTHENTICATION,
+        currency: 'INR'
+      });
+    } finally {
+      setPricingLoading(false);
     }
   };
 
@@ -592,6 +686,8 @@ export default function WhatsAppBulkMessaging() {
         message: generateLivePreview()
       }));
       setCampaignPreview(previewData);
+      // Fetch updated pricing when template or recipients change
+      fetchCostPreview();
     } else {
       setCampaignPreview(null);
     }
@@ -881,7 +977,11 @@ export default function WhatsAppBulkMessaging() {
     if (!selectedTemplateObj || recipients.length === 0) return 0;
 
     const category = selectedTemplateObj.category.toUpperCase();
-    const pricePerMessage = PRICING[category as keyof typeof PRICING] || PRICING.UTILITY;
+    
+    // Use dynamic pricing if available, otherwise fallback to hardcoded values
+    const pricePerMessage = dynamicPricing ? 
+      (dynamicPricing[category.toLowerCase() as keyof typeof dynamicPricing] as number || dynamicPricing.utility) :
+      (FALLBACK_PRICING[category as keyof typeof FALLBACK_PRICING] || FALLBACK_PRICING.UTILITY);
     
     return recipients.length * pricePerMessage;
   };
@@ -1590,13 +1690,19 @@ export default function WhatsAppBulkMessaging() {
               {/* Simple Pricing Breakdown */}
               <div className="p-4 bg-gray-50 rounded-lg border mb-6">
                 <div className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                  <DollarSign className="h-5 w-5 text-gray-600 mr-2" />
+                  <IndianRupee className="h-5 w-5 text-gray-600 mr-2" />
                   Pricing Breakdown
+                  {pricingLoading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Cost per message:</span>
-                    <span className="font-medium">₹{PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof PRICING] || PRICING.UTILITY}</span>
+                    <span className="font-medium">
+                      ₹{dynamicPricing ? 
+                        (dynamicPricing[getSelectedTemplateCategory().toLowerCase() as keyof typeof dynamicPricing] as number || dynamicPricing.utility).toFixed(2) :
+                        (FALLBACK_PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof FALLBACK_PRICING] || FALLBACK_PRICING.UTILITY).toFixed(2)
+                      }
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Number of recipients:</span>
@@ -1643,7 +1749,10 @@ export default function WhatsAppBulkMessaging() {
               {/* Simple Footer */}
               <div className="text-center mt-4">
                 <p className="text-xs text-gray-500">
-                  By confirming, you agree to send {recipients.length} messages at ₹{PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof PRICING] || PRICING.UTILITY} each
+                  By confirming, you agree to send {recipients.length} messages at ₹{dynamicPricing ? 
+                    (dynamicPricing[getSelectedTemplateCategory().toLowerCase() as keyof typeof dynamicPricing] as number || dynamicPricing.utility).toFixed(2) :
+                    (FALLBACK_PRICING[getSelectedTemplateCategory().toUpperCase() as keyof typeof FALLBACK_PRICING] || FALLBACK_PRICING.UTILITY).toFixed(2)
+                  } each
                 </p>
               </div>
             </div>
